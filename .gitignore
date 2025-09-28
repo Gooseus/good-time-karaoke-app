@@ -3,4 +3,10 @@ node_modules
 .env
 data.json
 public/qr-codes/*.png
+
+# SQLite database files (exclude all variations)
 karaoke.db
+karaoke.db-shm
+karaoke.db-wal
+*.db-shm
+*.db-wal

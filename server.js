@@ -15,8 +15,9 @@ import {
   getSingerStats,
   reorderSongs,
   getDeduplicatedName,
-  getUniqueSingers
-} from './database.js';
+  getUniqueSingers,
+  getAllSessionsWithStats
+} from './database-sqlite.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -573,6 +574,328 @@ app.put('/api/sessions/:sessionId/reorder', (req, res) => {
   }
 });
 
+// Admin API endpoint
+app.get('/api/admin/sessions', (req, res) => {
+  try {
+    const sessions = getAllSessionsWithStats();
+    res.json({ sessions });
+  } catch (error) {
+    console.error('Error fetching admin sessions:', error);
+    res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
+
+// Admin dashboard
+app.get('/admin', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard - Karaoke DJ Queue</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            opacity: 0.8;
+        }
+
+        .sessions-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .sessions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .session-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .session-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .session-id {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .session-date {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .session-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .session-stat {
+            text-align: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .session-stat-number {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .session-stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .session-singers {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.7;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .sessions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .session-stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Home</a>
+
+        <div class="header">
+            <h1>🎤 Admin Dashboard</h1>
+            <p>Manage all your karaoke sessions</p>
+        </div>
+
+        <div class="stats-grid" id="overview-stats">
+            <div class="stat-card">
+                <div class="stat-number" id="total-sessions">-</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-songs">-</div>
+                <div class="stat-label">Total Songs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-singers">-</div>
+                <div class="stat-label">Total Singers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completion-rate">-</div>
+                <div class="stat-label">Completion Rate</div>
+            </div>
+        </div>
+
+        <div class="sessions-section">
+            <h2 class="section-title">All Sessions</h2>
+            <div id="sessions-container">
+                <div class="loading">Loading sessions...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadAdminData() {
+            try {
+                const response = await fetch('/api/admin/sessions');
+                const data = await response.json();
+
+                displayOverviewStats(data.sessions);
+                displaySessions(data.sessions);
+            } catch (error) {
+                console.error('Error loading admin data:', error);
+                document.getElementById('sessions-container').innerHTML =
+                    '<div style="text-align: center; color: #ff6b6b;">Error loading sessions</div>';
+            }
+        }
+
+        function displayOverviewStats(sessions) {
+            const totalSessions = sessions.length;
+            const totalSongs = sessions.reduce((sum, s) => sum + s.total_songs, 0);
+            const totalSingers = sessions.reduce((sum, s) => sum + s.unique_singers, 0);
+            const completedSongs = sessions.reduce((sum, s) => sum + s.completed_songs, 0);
+            const completionRate = totalSongs > 0 ? Math.round((completedSongs / totalSongs) * 100) : 0;
+
+            document.getElementById('total-sessions').textContent = totalSessions;
+            document.getElementById('total-songs').textContent = totalSongs;
+            document.getElementById('total-singers').textContent = totalSingers;
+            document.getElementById('completion-rate').textContent = completionRate + '%';
+        }
+
+        function displaySessions(sessions) {
+            const container = document.getElementById('sessions-container');
+
+            if (sessions.length === 0) {
+                container.innerHTML = '<div style="text-align: center; opacity: 0.7;">No sessions found</div>';
+                return;
+            }
+
+            const sessionsHTML = sessions.map(session => {
+                const date = new Date(session.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                return \`
+                    <a href="/dj/\${session.id}" class="session-card">
+                        <div class="session-header">
+                            <div class="session-id">\${session.id}</div>
+                            <div class="session-date">\${date}</div>
+                        </div>
+
+                        <div class="session-stats">
+                            <div class="session-stat">
+                                <div class="session-stat-number">\${session.total_songs}</div>
+                                <div class="session-stat-label">Total Songs</div>
+                            </div>
+                            <div class="session-stat">
+                                <div class="session-stat-number">\${session.waiting_songs}</div>
+                                <div class="session-stat-label">Waiting</div>
+                            </div>
+                            <div class="session-stat">
+                                <div class="session-stat-number">\${session.completed_songs}</div>
+                                <div class="session-stat-label">Completed</div>
+                            </div>
+                            <div class="session-stat">
+                                <div class="session-stat-number">\${session.skipped_songs}</div>
+                                <div class="session-stat-label">Skipped</div>
+                            </div>
+                        </div>
+
+                        <div class="session-singers">
+                            \${session.unique_singers} unique singers
+                        </div>
+                    </a>
+                \`;
+            }).join('');
+
+            container.innerHTML = \`<div class="sessions-grid">\${sessionsHTML}</div>\`;
+        }
+
+        // Load data when page loads
+        loadAdminData();
+
+        // Refresh every 30 seconds
+        setInterval(loadAdminData, 30000);
+    </script>
+</body>
+</html>
+  `);
+});
+
 // Home page
 app.get('/', (req, res) => {
   res.send(`
@@ -607,6 +930,22 @@ app.get('/', (req, res) => {
     <h1>🎤 Karaoke DJ Queue</h1>
     <p>Create a new session to start accepting song requests!</p>
     <button onclick="createSession()">Start New Session</button>
+
+    <div style="margin-top: 30px; text-align: center;">
+        <a href="/admin" style="
+            display: inline-block;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        " onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'"
+           onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
+            📊 Admin Dashboard
+        </a>
+    </div>
 
     <script>
         async function createSession() {

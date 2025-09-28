@@ -21,3 +21,9 @@ primary_region = 'ewr'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 1024
+
+# Persistent volume for SQLite database
+[mounts]
+  source = 'karaoke_data'
+  destination = '/data'
+  initial_size = '1gb'

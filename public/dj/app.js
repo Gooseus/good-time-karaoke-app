@@ -7,6 +7,10 @@ function DJDashboard() {
     const [stats, setStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [songDuration, setSongDuration] = useState(270);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [isPaused, setIsPaused] = useState(false);
+    const [selectedSongs, setSelectedSongs] = useState(new Set());
     const sortableRef = useRef(null);
 
     // Get session ID from URL
@@ -129,10 +133,96 @@ function DJDashboard() {
 
     // Calculate wait time
     const calculateWaitTime = (position, currentSongDuration) => {
+        if (isPaused) return 'Paused';
         const waitingSongs = songs.filter(s => s.position < position && s.status === 'waiting').length;
         const playingSongs = songs.filter(s => s.status === 'playing').length;
         const totalWaitMinutes = (waitingSongs + playingSongs) * (currentSongDuration / 60);
         return Math.round(totalWaitMinutes);
+    };
+
+    // Filter songs based on search and status
+    const filteredSongs = songs.filter(song => {
+        const matchesSearch = searchTerm === '' ||
+            song.singer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            song.artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            song.song_title.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesStatus = filterStatus === 'all' || song.status === filterStatus;
+
+        return matchesSearch && matchesStatus;
+    });
+
+    // Bulk operations
+    const bulkUpdateStatus = async (status) => {
+        if (selectedSongs.size === 0) return;
+
+        try {
+            await Promise.all(
+                Array.from(selectedSongs).map(songId =>
+                    fetch(`/api/songs/${songId}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status })
+                    })
+                )
+            );
+            setSelectedSongs(new Set());
+            await fetchData();
+        } catch (error) {
+            console.error('Error in bulk update:', error);
+        }
+    };
+
+    const bulkDelete = async () => {
+        if (selectedSongs.size === 0) return;
+        if (!confirm(`Delete ${selectedSongs.size} selected songs?`)) return;
+
+        try {
+            await Promise.all(
+                Array.from(selectedSongs).map(songId =>
+                    fetch(`/api/songs/${songId}`, { method: 'DELETE' })
+                )
+            );
+            setSelectedSongs(new Set());
+            await fetchData();
+        } catch (error) {
+            console.error('Error in bulk delete:', error);
+        }
+    };
+
+    const clearCompleted = async () => {
+        const completedSongs = songs.filter(s => s.status === 'done');
+        if (completedSongs.length === 0) return;
+        if (!confirm(`Delete ${completedSongs.length} completed songs?`)) return;
+
+        try {
+            await Promise.all(
+                completedSongs.map(song =>
+                    fetch(`/api/songs/${song.id}`, { method: 'DELETE' })
+                )
+            );
+            await fetchData();
+        } catch (error) {
+            console.error('Error clearing completed:', error);
+        }
+    };
+
+    const toggleSongSelection = (songId) => {
+        const newSelected = new Set(selectedSongs);
+        if (newSelected.has(songId)) {
+            newSelected.delete(songId);
+        } else {
+            newSelected.add(songId);
+        }
+        setSelectedSongs(newSelected);
+    };
+
+    const selectAll = () => {
+        if (selectedSongs.size === filteredSongs.length) {
+            setSelectedSongs(new Set());
+        } else {
+            setSelectedSongs(new Set(filteredSongs.map(s => s.id)));
+        }
     };
 
     if (loading) {
@@ -179,13 +269,93 @@ function DJDashboard() {
                             <div className="stat-number">{songs.filter(s => s.status === 'done').length}</div>
                             <div>Completed</div>
                         </div>
+                        <div className="stat-item">
+                            <div className="stat-number">{songs.filter(s => s.status === 'skipped').length}</div>
+                            <div>Skipped</div>
+                        </div>
                     </div>
                 </div>
             )}
 
             <div className="main-content">
                 <div className="queue-section">
-                    <h2 className="section-title">Song Queue</h2>
+                    <div className="queue-header">
+                        <h2 className="section-title">Song Queue</h2>
+                        {isPaused && <div className="pause-indicator">⏸ PAUSED</div>}
+                    </div>
+
+                    {songs.length > 0 && (
+                        <div className="queue-controls">
+                            <div className="search-filter-row">
+                                <input
+                                    type="text"
+                                    placeholder="Search songs, artists, or singers..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="search-input"
+                                />
+                                <select
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    className="filter-select"
+                                >
+                                    <option value="all">All Songs</option>
+                                    <option value="waiting">Waiting</option>
+                                    <option value="playing">Playing</option>
+                                    <option value="done">Completed</option>
+                                    <option value="skipped">Skipped</option>
+                                </select>
+                            </div>
+
+                            <div className="bulk-controls">
+                                <button
+                                    onClick={selectAll}
+                                    className="btn btn-secondary"
+                                    disabled={filteredSongs.length === 0}
+                                >
+                                    {selectedSongs.size === filteredSongs.length && filteredSongs.length > 0 ? 'Deselect All' : 'Select All'}
+                                </button>
+
+                                {selectedSongs.size > 0 && (
+                                    <div className="bulk-actions">
+                                        <span className="selected-count">{selectedSongs.size} selected</span>
+                                        <button
+                                            onClick={() => bulkUpdateStatus('done')}
+                                            className="btn btn-done"
+                                        >
+                                            Mark Done
+                                        </button>
+                                        <button
+                                            onClick={() => bulkUpdateStatus('waiting')}
+                                            className="btn btn-secondary"
+                                        >
+                                            Mark Waiting
+                                        </button>
+                                        <button
+                                            onClick={() => bulkUpdateStatus('skipped')}
+                                            className="btn btn-skip"
+                                        >
+                                            Mark Skipped
+                                        </button>
+                                        <button
+                                            onClick={bulkDelete}
+                                            className="btn btn-delete"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={clearCompleted}
+                                    className="btn btn-cleanup"
+                                    disabled={songs.filter(s => s.status === 'done').length === 0}
+                                >
+                                    Clear Completed ({songs.filter(s => s.status === 'done').length})
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {songs.length === 0 ? (
                         <div className="empty-queue">
@@ -194,16 +364,28 @@ function DJDashboard() {
                                 Share the QR code or session ID for singers to start requesting songs.
                             </div>
                         </div>
+                    ) : filteredSongs.length === 0 ? (
+                        <div className="empty-queue">
+                            <div>No songs match your filters</div>
+                        </div>
                     ) : (
                         <ul className="song-list" ref={sortableRef}>
-                            {songs.map((song) => (
+                            {filteredSongs.map((song) => (
                                 <li
                                     key={song.id}
-                                    className={`song-item ${song.status}`}
+                                    className={`song-item ${song.status} ${selectedSongs.has(song.id) ? 'selected' : ''}`}
                                     data-song-id={song.id}
                                 >
                                     <div className="song-header">
-                                        <div className="song-position">#{song.position}</div>
+                                        <div className="song-left">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSongs.has(song.id)}
+                                                onChange={() => toggleSongSelection(song.id)}
+                                                className="song-checkbox"
+                                            />
+                                            <div className="song-position">#{song.position}</div>
+                                        </div>
                                         <div className="song-actions">
                                             {song.status === 'waiting' && (
                                                 <button
@@ -214,11 +396,27 @@ function DJDashboard() {
                                                 </button>
                                             )}
                                             {song.status === 'playing' && (
+                                                <>
+                                                    <button
+                                                        className="btn btn-done"
+                                                        onClick={() => updateSongStatus(song.id, 'done')}
+                                                    >
+                                                        ✓ Done
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-skip"
+                                                        onClick={() => updateSongStatus(song.id, 'skipped')}
+                                                    >
+                                                        ⏭ Skip
+                                                    </button>
+                                                </>
+                                            )}
+                                            {song.status === 'waiting' && (
                                                 <button
-                                                    className="btn btn-done"
-                                                    onClick={() => updateSongStatus(song.id, 'done')}
+                                                    className="btn btn-skip"
+                                                    onClick={() => updateSongStatus(song.id, 'skipped')}
                                                 >
-                                                    ✓ Done
+                                                    ⏭ Skip
                                                 </button>
                                             )}
                                             <a
@@ -247,7 +445,7 @@ function DJDashboard() {
 
                                     {song.status === 'waiting' && (
                                         <div className="wait-time">
-                                            Est. wait: ~{calculateWaitTime(song.position, songDuration)} min
+                                            Est. wait: {isPaused ? 'Paused' : `~${calculateWaitTime(song.position, songDuration)} min`}
                                         </div>
                                     )}
                                 </li>
@@ -259,6 +457,15 @@ function DJDashboard() {
                 <div className="sidebar">
                     <div className="controls-section">
                         <h3 className="section-title">Controls</h3>
+
+                        <div className="control-group">
+                            <button
+                                className={`btn ${isPaused ? 'btn-play' : 'btn-pause'} btn-large`}
+                                onClick={() => setIsPaused(!isPaused)}
+                            >
+                                {isPaused ? '▶ Resume Queue' : '⏸ Pause Queue'}
+                            </button>
+                        </div>
 
                         <div className="control-group">
                             <label htmlFor="song-duration">Average Song Duration (seconds)</label>
