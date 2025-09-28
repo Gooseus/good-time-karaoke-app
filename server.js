@@ -203,7 +203,6 @@ app.get('/singer/:sessionId', (req, res) => {
                 <select id="singer_select" name="singer_select" onchange="toggleNewSingerInput()" required>
                     <option value="">Select a singer...</option>
                     <option value="__NEW__">🆕 New Singer</option>
-                    <div id="existing-singers-options"></div>
                 </select>
             </div>
 
@@ -240,17 +239,18 @@ app.get('/singer/:sessionId', (req, res) => {
                 const data = await response.json();
 
                 const select = document.getElementById('singer_select');
-                const existingOptions = document.getElementById('existing-singers-options');
 
-                // Clear existing options (except the first two)
-                existingOptions.innerHTML = '';
+                // Remove any existing singer options (keep first two: placeholder and "New Singer")
+                while (select.children.length > 2) {
+                    select.removeChild(select.lastChild);
+                }
 
                 // Add existing singers as options
                 data.singers.forEach(singer => {
                     const option = document.createElement('option');
                     option.value = singer;
                     option.textContent = singer;
-                    select.insertBefore(option, select.children[2]); // Insert before the existing-singers-options div
+                    select.appendChild(option);
                 });
             } catch (error) {
                 console.error('Error loading singers:', error);
@@ -339,8 +339,15 @@ app.post('/api/sessions/:sessionId/songs', (req, res) => {
       return res.status(404).send('<div class="error">Session not found</div>');
     }
 
-    // Get deduplicated name
-    const finalName = getDeduplicatedName(sessionId, singer_name);
+    // Use the singer name as-is if it's from the dropdown (existing singer)
+    // Only apply deduplication if it's a new singer name
+    const existingSingers = getUniqueSingers(sessionId);
+    let finalName = singer_name;
+
+    // If this singer name doesn't exist yet, apply deduplication
+    if (!existingSingers.includes(singer_name)) {
+      finalName = getDeduplicatedName(sessionId, singer_name);
+    }
 
     // Add song to queue
     const result = addSong(sessionId, finalName, artist, song_title);

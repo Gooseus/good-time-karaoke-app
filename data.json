@@ -29,6 +29,12 @@
       "created_at": "2025-09-28T17:13:38.962Z",
       "song_duration": 270,
       "is_active": true
+    },
+    "XSSJ_7": {
+      "id": "XSSJ_7",
+      "created_at": "2025-09-28T17:22:53.622Z",
+      "song_duration": 270,
+      "is_active": true
     }
   },
   "songs": {
@@ -51,6 +57,56 @@
       "position": 1,
       "status": "waiting",
       "requested_at": "2025-09-28T16:46:33.407Z"
+    },
+    "3": {
+      "id": 3,
+      "session_id": "6_QBIT",
+      "singer_name": "John",
+      "artist": "Test Artist",
+      "song_title": "Test Song",
+      "position": 1,
+      "status": "waiting",
+      "requested_at": "2025-09-28T17:21:39.592Z"
+    },
+    "4": {
+      "id": 4,
+      "session_id": "XSSJ_7",
+      "singer_name": "Alice",
+      "artist": "Taylor Swift",
+      "song_title": "Shake It Off",
+      "position": 1,
+      "status": "waiting",
+      "requested_at": "2025-09-28T17:22:58.731Z"
+    },
+    "5": {
+      "id": 5,
+      "session_id": "XSSJ_7",
+      "singer_name": "Alice",
+      "artist": "Adele",
+      "song_title": "Rolling in the Deep",
+      "position": 2,
+      "status": "waiting",
+      "requested_at": "2025-09-28T17:23:07.817Z"
+    },
+    "6": {
+      "id": 6,
+      "session_id": "XSSJ_7",
+      "singer_name": "Bob",
+      "artist": "Beatles",
+      "song_title": "Hey Jude",
+      "position": 3,
+      "status": "waiting",
+      "requested_at": "2025-09-28T17:23:11.846Z"
+    },
+    "7": {
+      "id": 7,
+      "session_id": "XSSJ_7",
+      "singer_name": "alice (2)",
+      "artist": "Pink",
+      "song_title": "Just Give Me a Reason",
+      "position": 4,
+      "status": "waiting",
+      "requested_at": "2025-09-28T17:23:16.374Z"
     }
   },
   "singer_stats": {
@@ -63,7 +119,27 @@
       "session_id": "Z5QE88",
       "singer_name": "Alaina",
       "song_count": 1
+    },
+    "6_QBIT_John": {
+      "session_id": "6_QBIT",
+      "singer_name": "John",
+      "song_count": 1
+    },
+    "XSSJ_7_Alice": {
+      "session_id": "XSSJ_7",
+      "singer_name": "Alice",
+      "song_count": 2
+    },
+    "XSSJ_7_Bob": {
+      "session_id": "XSSJ_7",
+      "singer_name": "Bob",
+      "song_count": 1
+    },
+    "XSSJ_7_alice (2)": {
+      "session_id": "XSSJ_7",
+      "singer_name": "alice (2)",
+      "song_count": 1
     }
   },
-  "nextSongId": 3
+  "nextSongId": 8
 }
