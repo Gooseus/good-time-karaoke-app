@@ -1,0 +1,57 @@
+{
+  "sessions": {
+    "QIL_9O": {
+      "id": "QIL_9O",
+      "created_at": "2025-09-28T16:44:12.467Z",
+      "song_duration": 270,
+      "is_active": true
+    },
+    "Z5QE88": {
+      "id": "Z5QE88",
+      "created_at": "2025-09-28T16:44:49.052Z",
+      "song_duration": 270,
+      "is_active": true
+    },
+    "J6H2_D": {
+      "id": "J6H2_D",
+      "created_at": "2025-09-28T16:47:14.227Z",
+      "song_duration": 270,
+      "is_active": true
+    }
+  },
+  "songs": {
+    "1": {
+      "id": 1,
+      "session_id": "Z5QE88",
+      "singer_name": "Goose",
+      "artist": "Journey",
+      "song_title": "Don't Stop Believin'",
+      "position": 2,
+      "status": "waiting",
+      "requested_at": "2025-09-28T16:45:20.042Z"
+    },
+    "2": {
+      "id": 2,
+      "session_id": "Z5QE88",
+      "singer_name": "Alaina",
+      "artist": "Katy Perry",
+      "song_title": "Hot and Cold",
+      "position": 1,
+      "status": "waiting",
+      "requested_at": "2025-09-28T16:46:33.407Z"
+    }
+  },
+  "singer_stats": {
+    "Z5QE88_Goose": {
+      "session_id": "Z5QE88",
+      "singer_name": "Goose",
+      "song_count": 1
+    },
+    "Z5QE88_Alaina": {
+      "session_id": "Z5QE88",
+      "singer_name": "Alaina",
+      "song_count": 1
+    }
+  },
+  "nextSongId": 3
+}
