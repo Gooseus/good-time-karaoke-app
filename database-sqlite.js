@@ -55,6 +55,43 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_songs_session_status ON songs (session_id, status);
 `);
 
+// Handle database migrations for existing databases
+function runMigrations() {
+  try {
+    // Check if tip columns exist by trying to select from them
+    const checkColumns = db.prepare("PRAGMA table_info(sessions)");
+    const columns = checkColumns.all();
+    const columnNames = columns.map(col => col.name);
+
+    const hasVenmo = columnNames.includes('venmo_handle');
+    const hasCashApp = columnNames.includes('cashapp_handle');
+    const hasZelle = columnNames.includes('zelle_handle');
+
+    // Add missing tip columns if they don't exist
+    if (!hasVenmo || !hasCashApp || !hasZelle) {
+      console.log('Running database migration to add tip columns...');
+
+      if (!hasVenmo) {
+        db.exec('ALTER TABLE sessions ADD COLUMN venmo_handle TEXT');
+      }
+      if (!hasCashApp) {
+        db.exec('ALTER TABLE sessions ADD COLUMN cashapp_handle TEXT');
+      }
+      if (!hasZelle) {
+        db.exec('ALTER TABLE sessions ADD COLUMN zelle_handle TEXT');
+      }
+
+      console.log('Database migration completed successfully.');
+    }
+  } catch (error) {
+    console.error('Error running database migrations:', error);
+    // Don't throw - let the app continue with existing schema
+  }
+}
+
+// Run migrations
+runMigrations();
+
 // Prepared statements for performance
 const stmts = {
   createSession: db.prepare(`
