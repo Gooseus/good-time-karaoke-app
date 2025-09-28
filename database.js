@@ -148,3 +148,9 @@ export function getDeduplicatedName(sessionId, requestedName) {
 
   return finalName;
 }
+
+export function getUniqueSingers(sessionId) {
+  const songs = getSongs(sessionId);
+  const uniqueNames = [...new Set(songs.map(song => song.singer_name))];
+  return uniqueNames.sort();
+}

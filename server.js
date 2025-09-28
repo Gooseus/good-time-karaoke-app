@@ -14,7 +14,8 @@ import {
   deleteSong,
   getSingerStats,
   reorderSongs,
-  getDeduplicatedName
+  getDeduplicatedName,
+  getUniqueSingers
 } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -133,7 +134,7 @@ app.get('/singer/:sessionId', (req, res) => {
             margin-bottom: 8px;
             font-weight: 600;
         }
-        input {
+        input, select {
             width: 100%;
             padding: 15px;
             border: none;
@@ -141,6 +142,9 @@ app.get('/singer/:sessionId', (req, res) => {
             font-size: 16px;
             background: rgba(255, 255, 255, 0.9);
             box-sizing: border-box;
+        }
+        select {
+            cursor: pointer;
         }
         button {
             width: 100%;
@@ -195,8 +199,17 @@ app.get('/singer/:sessionId', (req, res) => {
               hx-on::after-request="document.querySelector('button').disabled = false">
 
             <div class="form-group">
-                <label for="singer_name">Your Name</label>
-                <input type="text" id="singer_name" name="singer_name" required>
+                <label for="singer_select">Singer</label>
+                <select id="singer_select" name="singer_select" onchange="toggleNewSingerInput()" required>
+                    <option value="">Select a singer...</option>
+                    <option value="__NEW__">🆕 New Singer</option>
+                    <div id="existing-singers-options"></div>
+                </select>
+            </div>
+
+            <div class="form-group" id="new-singer-group" style="display: none;">
+                <label for="new_singer_name">New Singer Name</label>
+                <input type="text" id="new_singer_name" name="new_singer_name" placeholder="Enter your name">
             </div>
 
             <div class="form-group">
@@ -218,6 +231,97 @@ app.get('/singer/:sessionId', (req, res) => {
             <a href="/queue/${sessionId}">View Queue</a>
         </div>
     </div>
+
+    <script>
+        // Load existing singers when page loads
+        async function loadExistingSingers() {
+            try {
+                const response = await fetch('/api/sessions/${sessionId}/singers');
+                const data = await response.json();
+
+                const select = document.getElementById('singer_select');
+                const existingOptions = document.getElementById('existing-singers-options');
+
+                // Clear existing options (except the first two)
+                existingOptions.innerHTML = '';
+
+                // Add existing singers as options
+                data.singers.forEach(singer => {
+                    const option = document.createElement('option');
+                    option.value = singer;
+                    option.textContent = singer;
+                    select.insertBefore(option, select.children[2]); // Insert before the existing-singers-options div
+                });
+            } catch (error) {
+                console.error('Error loading singers:', error);
+            }
+        }
+
+        // Toggle new singer input based on selection
+        function toggleNewSingerInput() {
+            const select = document.getElementById('singer_select');
+            const newSingerGroup = document.getElementById('new-singer-group');
+            const newSingerInput = document.getElementById('new_singer_name');
+
+            if (select.value === '__NEW__') {
+                newSingerGroup.style.display = 'block';
+                newSingerInput.required = true;
+                newSingerInput.focus();
+            } else {
+                newSingerGroup.style.display = 'none';
+                newSingerInput.required = false;
+                newSingerInput.value = '';
+            }
+        }
+
+        // Custom form validation
+        function validateForm() {
+            const select = document.getElementById('singer_select');
+            const newSingerInput = document.getElementById('new_singer_name');
+
+            if (select.value === '__NEW__' && !newSingerInput.value.trim()) {
+                alert('Please enter your name');
+                newSingerInput.focus();
+                return false;
+            }
+
+            if (!select.value) {
+                alert('Please select a singer');
+                select.focus();
+                return false;
+            }
+
+            return true;
+        }
+
+        // Override form submission to include validation
+        document.querySelector('form').addEventListener('submit', function(e) {
+            if (!validateForm()) {
+                e.preventDefault();
+                return false;
+            }
+
+            // Set the singer name based on selection
+            const select = document.getElementById('singer_select');
+            const newSingerInput = document.getElementById('new_singer_name');
+
+            // Create a hidden input with the final singer name
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'singer_name';
+
+            if (select.value === '__NEW__') {
+                hiddenInput.value = newSingerInput.value.trim();
+            } else {
+                hiddenInput.value = select.value;
+            }
+
+            this.appendChild(hiddenInput);
+        });
+
+        // Load singers when page loads
+        window.addEventListener('load', loadExistingSingers);
+    </script>
 </body>
 </html>`;
 
@@ -397,6 +501,21 @@ app.get('/api/sessions/:sessionId/songs', (req, res) => {
   } catch (error) {
     console.error('Error getting songs:', error);
     res.status(500).json({ error: 'Failed to get songs' });
+  }
+});
+
+// API: Get existing singers for session
+app.get('/api/sessions/:sessionId/singers', (req, res) => {
+  try {
+    const session = getSession(req.params.sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    const singers = getUniqueSingers(req.params.sessionId);
+    res.json({ singers });
+  } catch (error) {
+    console.error('Error getting singers:', error);
+    res.status(500).json({ error: 'Failed to get singers' });
   }
 });
 
