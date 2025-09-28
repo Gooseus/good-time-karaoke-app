@@ -29,8 +29,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // Helper function to generate QR code
-async function generateQRCode(sessionId) {
-  const url = `http://localhost:${PORT}/singer/${sessionId}`;
+async function generateQRCode(sessionId, req) {
+  // Get the base URL from the request
+  const protocol = req.headers['x-forwarded-proto'] || (req.connection.encrypted ? 'https' : 'http');
+  const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${PORT}`;
+  const baseUrl = `${protocol}://${host}`;
+
+  const url = `${baseUrl}/singer/${sessionId}`;
   const qrCodePath = join(__dirname, 'public', 'qr-codes', `${sessionId}.png`);
 
   try {
@@ -54,7 +59,7 @@ app.post('/api/sessions', async (req, res) => {
     const songDuration = req.body.songDuration || 270;
 
     createSession(sessionId, songDuration);
-    const qrCodePath = await generateQRCode(sessionId);
+    const qrCodePath = await generateQRCode(sessionId, req);
 
     res.json({
       sessionId,
