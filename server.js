@@ -365,15 +365,22 @@ ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = ''; // Clear previous QR code
 
-            QRCode.toCanvas(qrContainer, url, {
-                width: 200,
-                height: 200,
-                colorDark: '#000000',
-                colorLight: '#ffffff',
-                margin: 2
-            }, function (error) {
-                if (error) console.error(error);
-            });
+            // Use QR Server API for reliable QR generation
+            const img = document.createElement('img');
+            img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=\${encodeURIComponent(url)}\`;
+            img.style.width = '200px';
+            img.style.height = '200px';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            img.alt = 'QR Code';
+            img.onload = function() {
+                console.log('QR Code loaded successfully');
+            };
+            img.onerror = function() {
+                console.error('Failed to load QR code');
+                qrContainer.innerHTML = '<p>Failed to generate QR code</p>';
+            };
+            qrContainer.appendChild(img);
 
             document.getElementById('qrModal').style.display = 'block';
         }
@@ -510,6 +517,9 @@ app.post('/api/sessions/:sessionId/songs', (req, res) => {
     const result = addSong(sessionId, finalName, artist, song_title);
     const songs = getSongs(sessionId);
     const position = songs.length;
+
+    console.log('Session data:', session); // Debug log
+    console.log('Tip handles:', { venmo: session.venmo_handle, cashapp: session.cashapp_handle, zelle: session.zelle_handle }); // Debug log
 
     const tipSection = (session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
       <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.3);">
@@ -852,15 +862,22 @@ app.get('/queue/:sessionId', (req, res) => {
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = ''; // Clear previous QR code
 
-            QRCode.toCanvas(qrContainer, url, {
-                width: 200,
-                height: 200,
-                colorDark: '#000000',
-                colorLight: '#ffffff',
-                margin: 2
-            }, function (error) {
-                if (error) console.error(error);
-            });
+            // Use QR Server API for reliable QR generation
+            const img = document.createElement('img');
+            img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=\${encodeURIComponent(url)}\`;
+            img.style.width = '200px';
+            img.style.height = '200px';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            img.alt = 'QR Code';
+            img.onload = function() {
+                console.log('QR Code loaded successfully');
+            };
+            img.onerror = function() {
+                console.error('Failed to load QR code');
+                qrContainer.innerHTML = '<p>Failed to generate QR code</p>';
+            };
+            qrContainer.appendChild(img);
 
             document.getElementById('qrModal').style.display = 'block';
         }
