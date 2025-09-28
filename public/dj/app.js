@@ -11,6 +11,12 @@ function DJDashboard() {
     const [filterStatus, setFilterStatus] = useState('all');
     const [isPaused, setIsPaused] = useState(false);
     const [selectedSongs, setSelectedSongs] = useState(new Set());
+    const [showTipSettings, setShowTipSettings] = useState(false);
+    const [tipHandles, setTipHandles] = useState({
+        venmo_handle: '',
+        cashapp_handle: '',
+        zelle_handle: ''
+    });
     const sortableRef = useRef(null);
 
     // Get session ID from URL
@@ -31,6 +37,11 @@ function DJDashboard() {
                     const sessionData = await response.json();
                     setSession(sessionData);
                     setSongDuration(sessionData.song_duration);
+                    setTipHandles({
+                        venmo_handle: sessionData.venmo_handle || '',
+                        cashapp_handle: sessionData.cashapp_handle || '',
+                        zelle_handle: sessionData.zelle_handle || ''
+                    });
                 }
             } catch (error) {
                 console.error('Error fetching session:', error);
@@ -222,6 +233,22 @@ function DJDashboard() {
             setSelectedSongs(new Set());
         } else {
             setSelectedSongs(new Set(filteredSongs.map(s => s.id)));
+        }
+    };
+
+    // Save tip settings
+    const saveTipSettings = async () => {
+        try {
+            await fetch(`/api/sessions/${sessionId}/tips`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(tipHandles)
+            });
+            setShowTipSettings(false);
+            alert('Tip settings saved successfully!');
+        } catch (error) {
+            console.error('Error saving tip settings:', error);
+            alert('Failed to save tip settings');
         }
     };
 
@@ -489,6 +516,71 @@ function DJDashboard() {
                         >
                             End Session
                         </button>
+                    </div>
+
+                    <div className="controls-section">
+                        <h3 className="section-title">💰 Tip Settings</h3>
+
+                        {!showTipSettings ? (
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => setShowTipSettings(true)}
+                            >
+                                Manage Tips
+                            </button>
+                        ) : (
+                            <div className="tip-settings">
+                                <div className="control-group">
+                                    <label htmlFor="tip-venmo">Venmo Handle</label>
+                                    <input
+                                        type="text"
+                                        id="tip-venmo"
+                                        value={tipHandles.venmo_handle}
+                                        onChange={(e) => setTipHandles(prev => ({...prev, venmo_handle: e.target.value}))}
+                                        placeholder="@your-venmo"
+                                    />
+                                </div>
+
+                                <div className="control-group">
+                                    <label htmlFor="tip-cashapp">Cash App Handle</label>
+                                    <input
+                                        type="text"
+                                        id="tip-cashapp"
+                                        value={tipHandles.cashapp_handle}
+                                        onChange={(e) => setTipHandles(prev => ({...prev, cashapp_handle: e.target.value}))}
+                                        placeholder="$your-cashapp"
+                                    />
+                                </div>
+
+                                <div className="control-group">
+                                    <label htmlFor="tip-zelle">Zelle (Phone/Email)</label>
+                                    <input
+                                        type="text"
+                                        id="tip-zelle"
+                                        value={tipHandles.zelle_handle}
+                                        onChange={(e) => setTipHandles(prev => ({...prev, zelle_handle: e.target.value}))}
+                                        placeholder="555-123-4567 or email@example.com"
+                                    />
+                                </div>
+
+                                <div style={{display: 'flex', gap: '10px', marginTop: '15px'}}>
+                                    <button
+                                        className="btn btn-done"
+                                        onClick={saveTipSettings}
+                                        style={{flex: 1}}
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowTipSettings(false)}
+                                        style={{flex: 1}}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {stats.length > 0 && (

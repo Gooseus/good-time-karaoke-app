@@ -25,7 +25,10 @@ db.exec(`
     id TEXT PRIMARY KEY,
     created_at TEXT NOT NULL,
     song_duration INTEGER DEFAULT 270,
-    is_active INTEGER DEFAULT 1
+    is_active INTEGER DEFAULT 1,
+    venmo_handle TEXT,
+    cashapp_handle TEXT,
+    zelle_handle TEXT
   );
 
   CREATE TABLE IF NOT EXISTS songs (
@@ -55,12 +58,18 @@ db.exec(`
 // Prepared statements for performance
 const stmts = {
   createSession: db.prepare(`
-    INSERT INTO sessions (id, created_at, song_duration, is_active)
-    VALUES (?, ?, ?, 1)
+    INSERT INTO sessions (id, created_at, song_duration, is_active, venmo_handle, cashapp_handle, zelle_handle)
+    VALUES (?, ?, ?, 1, ?, ?, ?)
   `),
 
   getSession: db.prepare(`
     SELECT * FROM sessions WHERE id = ?
+  `),
+
+  updateSessionTips: db.prepare(`
+    UPDATE sessions
+    SET venmo_handle = ?, cashapp_handle = ?, zelle_handle = ?
+    WHERE id = ?
   `),
 
   addSong: db.prepare(`
@@ -131,13 +140,27 @@ const stmts = {
 };
 
 // Session functions
-export function createSession(sessionId, songDuration = 270) {
-  const result = stmts.createSession.run(sessionId, new Date().toISOString(), songDuration);
+export function createSession(sessionId, songDuration = 270, tipHandles = {}) {
+  const { venmo_handle = null, cashapp_handle = null, zelle_handle = null } = tipHandles;
+  const result = stmts.createSession.run(
+    sessionId,
+    new Date().toISOString(),
+    songDuration,
+    venmo_handle,
+    cashapp_handle,
+    zelle_handle
+  );
   return { changes: result.changes };
 }
 
 export function getSession(sessionId) {
   return stmts.getSession.get(sessionId) || null;
+}
+
+export function updateSessionTips(sessionId, tipHandles) {
+  const { venmo_handle = null, cashapp_handle = null, zelle_handle = null } = tipHandles;
+  const result = stmts.updateSessionTips.run(venmo_handle, cashapp_handle, zelle_handle, sessionId);
+  return { changes: result.changes };
 }
 
 // Song functions

@@ -16,7 +16,8 @@ import {
   reorderSongs,
   getDeduplicatedName,
   getUniqueSingers,
-  getAllSessionsWithStats
+  getAllSessionsWithStats,
+  updateSessionTips
 } from './database-sqlite.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,8 +60,13 @@ app.post('/api/sessions', async (req, res) => {
   try {
     const sessionId = nanoid(6).toUpperCase();
     const songDuration = req.body.songDuration || 270;
+    const tipHandles = {
+      venmo_handle: req.body.venmo_handle || null,
+      cashapp_handle: req.body.cashapp_handle || null,
+      zelle_handle: req.body.zelle_handle || null
+    };
 
-    createSession(sessionId, songDuration);
+    createSession(sessionId, songDuration, tipHandles);
     const qrCodePath = await generateQRCode(sessionId, req);
 
     res.json({
@@ -187,6 +193,51 @@ app.get('/singer/:sessionId', (req, res) => {
             text-decoration: none;
             font-weight: 600;
         }
+        .tip-section {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+        }
+        .tip-section h3 {
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        .tip-section p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        .tip-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .tip-button {
+            display: block;
+            padding: 15px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .tip-button.venmo {
+            background: linear-gradient(135deg, #8B5CF6, #A855F7);
+        }
+        .tip-button.cashapp {
+            background: linear-gradient(135deg, #10B981, #059669);
+        }
+        .tip-button.zelle {
+            background: linear-gradient(135deg, #F59E0B, #D97706);
+            cursor: default;
+        }
+        .tip-button:hover:not(.zelle) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -230,6 +281,26 @@ app.get('/singer/:sessionId', (req, res) => {
         <div class="queue-link">
             <a href="/queue/${sessionId}">View Queue</a>
         </div>
+
+        ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
+        <div class="tip-section">
+            <h3>💰 Tip Your DJ!</h3>
+            <p>Enjoying the music? Show some love!</p>
+            <div class="tip-buttons">
+                ${session.venmo_handle ? `
+                <a href="https://venmo.com/${session.venmo_handle.replace('@', '')}" target="_blank" class="tip-button venmo">
+                    💜 Venmo: ${session.venmo_handle}
+                </a>` : ''}
+                ${session.cashapp_handle ? `
+                <a href="https://cash.app/${session.cashapp_handle.replace('$', '')}" target="_blank" class="tip-button cashapp">
+                    💚 Cash App: ${session.cashapp_handle}
+                </a>` : ''}
+                ${session.zelle_handle ? `
+                <div class="tip-button zelle">
+                    💛 Zelle: ${session.zelle_handle}
+                </div>` : ''}
+            </div>
+        </div>` : ''}
     </div>
 
     <script>
@@ -380,7 +451,9 @@ app.get('/queue/:sessionId', (req, res) => {
     return res.status(404).send('<h1>Session not found</h1>');
   }
 
-  const songs = getSongs(sessionId);
+  const allSongs = getSongs(sessionId);
+  const queueSongs = allSongs.filter(song => song.status === 'waiting' || song.status === 'playing');
+  const playedSongs = allSongs.filter(song => song.status === 'done');
 
   const html = `
 <!DOCTYPE html>
@@ -455,14 +528,59 @@ app.get('/queue/:sessionId', (req, res) => {
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .section-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .played-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .played-songs {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .played-songs::-webkit-scrollbar {
+            width: 8px;
+        }
+        .played-songs::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .played-songs::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎵 Queue</h1>
+        <h1>🎵 Karaoke Queue</h1>
+
+        <!-- Current Queue Section -->
+        <div class="section-header">
+            <div class="section-title">Up Next</div>
+            <div class="section-count">${queueSongs.length} songs</div>
+        </div>
 
         <div id="queue">
-            ${songs.map(song => `
+            ${queueSongs.map(song => `
                 <div class="song ${song.status}">
                     <div class="position">#${song.position}</div>
                     <div class="singer">${song.singer_name}</div>
@@ -471,7 +589,25 @@ app.get('/queue/:sessionId', (req, res) => {
             `).join('')}
         </div>
 
-        ${songs.length === 0 ? '<p style="text-align: center; opacity: 0.7;">No songs in queue yet!</p>' : ''}
+        ${queueSongs.length === 0 ? '<p style="text-align: center; opacity: 0.7;">No songs in queue yet!</p>' : ''}
+
+        <!-- Played Songs Section -->
+        ${playedSongs.length > 0 ? `
+        <div class="played-section">
+            <div class="section-header">
+                <div class="section-title">🎤 Already Played</div>
+                <div class="section-count">${playedSongs.length} songs</div>
+            </div>
+
+            <div class="played-songs">
+                ${playedSongs.slice().reverse().map(song => `
+                    <div class="song done">
+                        <div class="singer">${song.singer_name}</div>
+                        <div class="track">"${song.song_title}" by ${song.artist}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>` : ''}
     </div>
 
     <button class="refresh-btn" onclick="location.reload()">🔄</button>
@@ -571,6 +707,19 @@ app.put('/api/sessions/:sessionId/reorder', (req, res) => {
   } catch (error) {
     console.error('Error reordering songs:', error);
     res.status(500).json({ error: 'Failed to reorder songs' });
+  }
+});
+
+// API: Update session tip information
+app.put('/api/sessions/:sessionId/tips', (req, res) => {
+  try {
+    const { venmo_handle, cashapp_handle, zelle_handle } = req.body;
+    const tipHandles = { venmo_handle, cashapp_handle, zelle_handle };
+    updateSessionTips(req.params.sessionId, tipHandles);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating session tips:', error);
+    res.status(500).json({ error: 'Failed to update tip information' });
   }
 });
 
@@ -910,6 +1059,65 @@ app.get('/', (req, res) => {
             margin: 50px auto;
             padding: 20px;
             text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .form-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #fff;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            box-sizing: border-box;
+        }
+        input::placeholder {
+            opacity: 0.6;
+        }
+        .tip-section {
+            margin-top: 20px;
+        }
+        .tip-subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #4fc3f7;
+        }
+        .tip-note {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 15px;
         }
         button {
             background: #ff6b6b;
@@ -920,19 +1128,13 @@ app.get('/', (req, res) => {
             border-radius: 10px;
             cursor: pointer;
             margin: 10px;
+            width: 100%;
+            transition: background 0.3s;
         }
         button:hover {
             background: #ff5252;
         }
-    </style>
-</head>
-<body>
-    <h1>🎤 Karaoke DJ Queue</h1>
-    <p>Create a new session to start accepting song requests!</p>
-    <button onclick="createSession()">Start New Session</button>
-
-    <div style="margin-top: 30px; text-align: center;">
-        <a href="/admin" style="
+        .admin-link {
             display: inline-block;
             padding: 12px 24px;
             background: rgba(255, 255, 255, 0.2);
@@ -941,22 +1143,74 @@ app.get('/', (req, res) => {
             border-radius: 5px;
             font-weight: 500;
             transition: background 0.3s ease;
-        " onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'"
-           onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
-            📊 Admin Dashboard
-        </a>
+        }
+        .admin-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Karaoke DJ Queue</h1>
+        <p class="subtitle">Create a new session to start accepting song requests!</p>
+
+        <form id="sessionForm" class="form-section">
+            <div class="tip-section">
+                <div class="tip-subtitle">💰 Set Up Tips (Optional)</div>
+                <div class="tip-note">Let singers know how to tip you for your awesome DJ services!</div>
+
+                <div class="form-group">
+                    <label for="venmo">Venmo Handle</label>
+                    <input type="text" id="venmo" name="venmo" placeholder="@your-venmo">
+                </div>
+
+                <div class="form-group">
+                    <label for="cashapp">Cash App Handle</label>
+                    <input type="text" id="cashapp" name="cashapp" placeholder="$your-cashapp">
+                </div>
+
+                <div class="form-group">
+                    <label for="zelle">Zelle (Phone/Email)</label>
+                    <input type="text" id="zelle" name="zelle" placeholder="555-123-4567 or email@example.com">
+                </div>
+            </div>
+
+            <button type="submit">🎵 Start New Session</button>
+        </form>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="/admin" class="admin-link">
+                📊 Admin Dashboard
+            </a>
+        </div>
     </div>
 
     <script>
-        async function createSession() {
+        document.getElementById('sessionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
             try {
-                const response = await fetch('/api/sessions', { method: 'POST' });
+                const formData = new FormData(e.target);
+                const payload = {
+                    venmo_handle: formData.get('venmo') || null,
+                    cashapp_handle: formData.get('cashapp') || null,
+                    zelle_handle: formData.get('zelle') || null
+                };
+
+                const response = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
                 const data = await response.json();
                 window.location.href = data.djUrl;
             } catch (error) {
                 alert('Failed to create session');
             }
-        }
+        });
     </script>
 </body>
 </html>`);
