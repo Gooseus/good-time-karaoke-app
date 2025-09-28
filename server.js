@@ -186,12 +186,24 @@ app.get('/singer/:sessionId', (req, res) => {
         }
         .queue-link {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 25px;
         }
-        .queue-link a {
-            color: #4fc3f7;
+        .view-queue-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+            color: white;
             text-decoration: none;
             font-weight: 600;
+            font-size: 18px;
+            padding: 15px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.3);
+            transition: all 0.3s ease;
+        }
+        .view-queue-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 195, 247, 0.4);
+            background: linear-gradient(135deg, #29b6f6, #4fc3f7);
         }
         .tip-section {
             margin-top: 30px;
@@ -213,6 +225,11 @@ app.get('/singer/:sessionId', (req, res) => {
             flex-direction: column;
             gap: 12px;
         }
+        .tip-button-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
         .tip-button {
             display: block;
             padding: 15px 20px;
@@ -223,6 +240,22 @@ app.get('/singer/:sessionId', (req, res) => {
             font-size: 16px;
             transition: all 0.3s ease;
             text-align: center;
+            flex: 1;
+        }
+        .qr-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        .qr-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
         }
         .tip-button.venmo {
             background: linear-gradient(135deg, #8B5CF6, #A855F7);
@@ -278,32 +311,84 @@ app.get('/singer/:sessionId', (req, res) => {
 
         <div id="result"></div>
 
-        <div class="queue-link">
-            <a href="/queue/${sessionId}">View Queue</a>
-        </div>
-
-        ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
+${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
         <div class="tip-section">
             <h3>💰 Tip Your DJ!</h3>
             <p>Enjoying the music? Show some love!</p>
             <div class="tip-buttons">
                 ${session.venmo_handle ? `
-                <a href="https://venmo.com/${session.venmo_handle.replace('@', '')}" target="_blank" class="tip-button venmo">
-                    💜 Venmo: ${session.venmo_handle}
-                </a>` : ''}
+                <div class="tip-button-container">
+                    <a href="https://venmo.com/${session.venmo_handle.replace('@', '')}" target="_blank" class="tip-button venmo">
+                        💜 Venmo: ${session.venmo_handle}
+                    </a>
+                    <button onclick="showQRCode('https://venmo.com/${session.venmo_handle.replace('@', '')}', 'Venmo: ${session.venmo_handle}')" class="qr-btn">📱</button>
+                </div>` : ''}
                 ${session.cashapp_handle ? `
-                <a href="https://cash.app/${session.cashapp_handle.replace('$', '')}" target="_blank" class="tip-button cashapp">
-                    💚 Cash App: ${session.cashapp_handle}
-                </a>` : ''}
+                <div class="tip-button-container">
+                    <a href="https://cash.app/${session.cashapp_handle.replace('$', '')}" target="_blank" class="tip-button cashapp">
+                        💚 Cash App: ${session.cashapp_handle}
+                    </a>
+                    <button onclick="showQRCode('https://cash.app/${session.cashapp_handle.replace('$', '')}', 'Cash App: ${session.cashapp_handle}')" class="qr-btn">📱</button>
+                </div>` : ''}
                 ${session.zelle_handle ? `
-                <div class="tip-button zelle">
-                    💛 Zelle: ${session.zelle_handle}
+                <div class="tip-button-container">
+                    <div class="tip-button zelle">
+                        💛 Zelle: ${session.zelle_handle}
+                    </div>
+                    <button onclick="showQRCode('${session.zelle_handle}', 'Zelle: ${session.zelle_handle}')" class="qr-btn">📱</button>
                 </div>` : ''}
             </div>
         </div>` : ''}
+
+        <div class="queue-link">
+            <a href="/queue/${sessionId}" class="view-queue-btn">📋 View Live Queue</a>
+        </div>
     </div>
 
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="qr-modal">
+        <div class="qr-modal-content">
+            <button class="close-modal" onclick="closeQRModal()">×</button>
+            <h3 id="qrTitle">Share This Link</h3>
+            <div class="qr-code-container">
+                <div id="qrcode"></div>
+            </div>
+            <p>Scan with your phone to open the link</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script>
+        // QR Code functionality
+        function showQRCode(url, title) {
+            document.getElementById('qrTitle').textContent = title;
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = ''; // Clear previous QR code
+
+            QRCode.toCanvas(qrContainer, url, {
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                margin: 2
+            }, function (error) {
+                if (error) console.error(error);
+            });
+
+            document.getElementById('qrModal').style.display = 'block';
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('qrModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQRModal();
+            }
+        });
+
         // Load existing singers when page loads
         async function loadExistingSingers() {
             try {
@@ -426,6 +511,45 @@ app.post('/api/sessions/:sessionId/songs', (req, res) => {
     const songs = getSongs(sessionId);
     const position = songs.length;
 
+    const tipSection = (session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.3);">
+        <h4 style="margin-bottom: 10px; color: #4fc3f7;">💰 Tip Your DJ!</h4>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${session.venmo_handle ? `
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="https://venmo.com/${session.venmo_handle.replace('@', '')}" target="_blank"
+               style="display: block; padding: 10px; background: linear-gradient(135deg, #8B5CF6, #A855F7);
+                      color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; flex: 1;">
+              💜 Venmo: ${session.venmo_handle}
+            </a>
+            <button onclick="showQRCode('https://venmo.com/${session.venmo_handle.replace('@', '')}', 'Venmo: ${session.venmo_handle}')"
+                    style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.3); color: white;
+                           padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 16px;">📱</button>
+          </div>` : ''}
+          ${session.cashapp_handle ? `
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="https://cash.app/${session.cashapp_handle.replace('$', '')}" target="_blank"
+               style="display: block; padding: 10px; background: linear-gradient(135deg, #10B981, #059669);
+                      color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; flex: 1;">
+              💚 Cash App: ${session.cashapp_handle}
+            </a>
+            <button onclick="showQRCode('https://cash.app/${session.cashapp_handle.replace('$', '')}', 'Cash App: ${session.cashapp_handle}')"
+                    style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.3); color: white;
+                           padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 16px;">📱</button>
+          </div>` : ''}
+          ${session.zelle_handle ? `
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="display: block; padding: 10px; background: linear-gradient(135deg, #F59E0B, #D97706);
+                        color: white; border-radius: 8px; font-weight: 600; text-align: center; flex: 1;">
+              💛 Zelle: ${session.zelle_handle}
+            </div>
+            <button onclick="showQRCode('${session.zelle_handle}', 'Zelle: ${session.zelle_handle}')"
+                    style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.3); color: white;
+                           padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 16px;">📱</button>
+          </div>` : ''}
+        </div>
+      </div>` : '';
+
     const successHtml = `
       <div class="success">
         <h3>🎉 Request Added!</h3>
@@ -433,6 +557,15 @@ app.post('/api/sessions/:sessionId/songs', (req, res) => {
         <p>"${song_title}" by ${artist}</p>
         <p>Queue position: <strong>#${position}</strong></p>
         <p>Estimated wait: ~${Math.round((position - 1) * session.song_duration / 60)} minutes</p>
+        ${tipSection}
+        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <a href="/queue/${sessionId}" class="view-queue-btn" style="display: inline-block; background: linear-gradient(135deg, #4fc3f7, #29b6f6); color: white; text-decoration: none; font-weight: 600; font-size: 16px; padding: 12px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(79, 195, 247, 0.3); flex: 1; text-align: center;">
+            📋 View Live Queue
+          </a>
+          <button onclick="location.reload()" style="background: linear-gradient(135deg, #ff6b6b, #ff5252); color: white; border: none; font-weight: 600; font-size: 16px; padding: 12px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3); flex: 1; cursor: pointer;">
+            🎵 Request Another
+          </button>
+        </div>
       </div>`;
 
     res.send(successHtml);
@@ -567,6 +700,61 @@ app.get('/queue/:sessionId', (req, res) => {
             background: rgba(255, 255, 255, 0.3);
             border-radius: 4px;
         }
+        .queue-tips {
+            margin-top: 40px;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+            padding-top: 30px;
+        }
+        /* QR Code Modal */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .qr-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            max-width: 90vw;
+            max-height: 90vh;
+            color: #333;
+        }
+        .qr-modal h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .qr-code-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            display: inline-block;
+        }
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        .close-modal:hover {
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -608,15 +796,213 @@ app.get('/queue/:sessionId', (req, res) => {
                 `).join('')}
             </div>
         </div>` : ''}
+
+        <!-- Tip Section for Queue View -->
+        ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
+        <div class="tip-section queue-tips">
+            <h3>💰 Tip Your DJ!</h3>
+            <p>Enjoying the music? Show some love!</p>
+            <div class="tip-buttons">
+                ${session.venmo_handle ? `
+                <div class="tip-button-container">
+                    <a href="https://venmo.com/${session.venmo_handle.replace('@', '')}" target="_blank" class="tip-button venmo">
+                        💜 Venmo: ${session.venmo_handle}
+                    </a>
+                    <button onclick="showQRCode('https://venmo.com/${session.venmo_handle.replace('@', '')}', 'Venmo: ${session.venmo_handle}')" class="qr-btn">📱</button>
+                </div>` : ''}
+                ${session.cashapp_handle ? `
+                <div class="tip-button-container">
+                    <a href="https://cash.app/${session.cashapp_handle.replace('$', '')}" target="_blank" class="tip-button cashapp">
+                        💚 Cash App: ${session.cashapp_handle}
+                    </a>
+                    <button onclick="showQRCode('https://cash.app/${session.cashapp_handle.replace('$', '')}', 'Cash App: ${session.cashapp_handle}')" class="qr-btn">📱</button>
+                </div>` : ''}
+                ${session.zelle_handle ? `
+                <div class="tip-button-container">
+                    <div class="tip-button zelle">
+                        💛 Zelle: ${session.zelle_handle}
+                    </div>
+                    <button onclick="showQRCode('${session.zelle_handle}', 'Zelle: ${session.zelle_handle}')" class="qr-btn">📱</button>
+                </div>` : ''}
+            </div>
+        </div>` : ''}
     </div>
 
     <button class="refresh-btn" onclick="location.reload()">🔄</button>
 
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="qr-modal">
+        <div class="qr-modal-content">
+            <button class="close-modal" onclick="closeQRModal()">×</button>
+            <h3 id="qrTitle">Share This Link</h3>
+            <div class="qr-code-container">
+                <div id="qrcode"></div>
+            </div>
+            <p>Scan with your phone to open the link</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script>
-        // Auto-refresh every 10 seconds
-        setInterval(() => {
-            location.reload();
-        }, 10000);
+        let isUpdating = false;
+
+        // QR Code functionality
+        function showQRCode(url, title) {
+            document.getElementById('qrTitle').textContent = title;
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = ''; // Clear previous QR code
+
+            QRCode.toCanvas(qrContainer, url, {
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                margin: 2
+            }, function (error) {
+                if (error) console.error(error);
+            });
+
+            document.getElementById('qrModal').style.display = 'block';
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('qrModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQRModal();
+            }
+        });
+
+        // Update queue content without full page reload
+        async function updateQueue() {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            try {
+                const response = await fetch('/api/sessions/${sessionId}/songs');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch queue data');
+                }
+
+                const data = await response.json();
+                const queueSongs = data.songs.filter(song => song.status === 'waiting' || song.status === 'playing');
+                const playedSongs = data.songs.filter(song => song.status === 'done');
+
+                // Update current queue section
+                const queueContainer = document.getElementById('queue');
+                const queueCountElement = document.querySelector('.section-count');
+
+                if (queueCountElement) {
+                    queueCountElement.textContent = queueSongs.length + ' songs';
+                }
+
+                if (queueContainer) {
+                    if (queueSongs.length === 0) {
+                        queueContainer.innerHTML = '<p style="text-align: center; opacity: 0.7;">No songs in queue yet!</p>';
+                    } else {
+                        queueContainer.innerHTML = queueSongs.map(song => \`
+                            <div class="song \${song.status}">
+                                <div class="position">#\${song.position}</div>
+                                <div class="singer">\${song.singer_name}</div>
+                                <div class="track">"\${song.song_title}" by \${song.artist}</div>
+                            </div>
+                        \`).join('');
+                    }
+                }
+
+                // Update played songs section
+                const playedSection = document.querySelector('.played-section');
+                if (playedSongs.length > 0) {
+                    if (!playedSection) {
+                        // Create played section if it doesn't exist
+                        const container = document.querySelector('.container');
+                        const playedSectionHtml = \`
+                            <div class="played-section">
+                                <div class="section-header">
+                                    <div class="section-title">🎤 Already Played</div>
+                                    <div class="section-count">\${playedSongs.length} songs</div>
+                                </div>
+                                <div class="played-songs">
+                                    \${playedSongs.slice().reverse().map(song => \`
+                                        <div class="song done">
+                                            <div class="singer">\${song.singer_name}</div>
+                                            <div class="track">"\${song.song_title}" by \${song.artist}</div>
+                                        </div>
+                                    \`).join('')}
+                                </div>
+                            </div>
+                        \`;
+
+                        // Insert before tips section or refresh button
+                        const tipsSection = document.querySelector('.queue-tips');
+                        const refreshBtn = document.querySelector('.refresh-btn');
+                        if (tipsSection) {
+                            tipsSection.insertAdjacentHTML('beforebegin', playedSectionHtml);
+                        } else if (refreshBtn) {
+                            refreshBtn.insertAdjacentHTML('beforebegin', playedSectionHtml);
+                        } else {
+                            container.insertAdjacentHTML('beforeend', playedSectionHtml);
+                        }
+                    } else {
+                        // Update existing played section
+                        const playedCount = playedSection.querySelector('.section-count');
+                        const playedContainer = playedSection.querySelector('.played-songs');
+
+                        if (playedCount) {
+                            playedCount.textContent = playedSongs.length + ' songs';
+                        }
+
+                        if (playedContainer) {
+                            playedContainer.innerHTML = playedSongs.slice().reverse().map(song => \`
+                                <div class="song done">
+                                    <div class="singer">\${song.singer_name}</div>
+                                    <div class="track">"\${song.song_title}" by \${song.artist}</div>
+                                </div>
+                            \`).join('');
+                        }
+                    }
+                } else {
+                    // Remove played section if no played songs
+                    if (playedSection) {
+                        playedSection.remove();
+                    }
+                }
+
+                // Update refresh button with timestamp
+                const refreshBtn = document.querySelector('.refresh-btn');
+                if (refreshBtn) {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    refreshBtn.title = \`Last updated: \${timeStr}\`;
+                }
+
+            } catch (error) {
+                console.error('Error updating queue:', error);
+                // Fall back to full page reload on error
+                location.reload();
+            } finally {
+                isUpdating = false;
+            }
+        }
+
+        // Update queue every 5 seconds
+        setInterval(updateQueue, 5000);
+
+        // Also update when page becomes visible again
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                updateQueue();
+            }
+        });
+
+        // Manual refresh button functionality
+        document.querySelector('.refresh-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            updateQueue();
+        });
     </script>
 </body>
 </html>`;
