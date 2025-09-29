@@ -17,6 +17,7 @@ function DJDashboard() {
         cashapp_handle: '',
         zelle_handle: ''
     });
+    const [undoStack, setUndoStack] = useState([]);
     const sortableRef = useRef(null);
 
     // Get session ID from URL
@@ -113,6 +114,20 @@ function DJDashboard() {
     // Update song status
     const updateSongStatus = async (songId, status) => {
         try {
+            // Save current state for undo
+            const song = songs.find(s => s.id === songId);
+            if (song) {
+                setUndoStack(prev => [...prev.slice(-9), { // Keep last 10 actions
+                    songId: song.id,
+                    previousStatus: song.status,
+                    newStatus: status,
+                    songName: song.song_title,
+                    artist: song.artist,
+                    singerName: song.singer_name,
+                    timestamp: Date.now()
+                }]);
+            }
+
             await fetch(`/api/songs/${songId}/status`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -121,6 +136,35 @@ function DJDashboard() {
             await fetchData();
         } catch (error) {
             console.error('Error updating song status:', error);
+        }
+    };
+
+    // Undo last action
+    const undoLastAction = async () => {
+        if (undoStack.length === 0) return;
+
+        const lastAction = undoStack[undoStack.length - 1];
+
+        // Check if action is recent (within last 5 minutes)
+        if (Date.now() - lastAction.timestamp > 5 * 60 * 1000) {
+            alert('Cannot undo actions older than 5 minutes');
+            setUndoStack([]);
+            return;
+        }
+
+        try {
+            await fetch(`/api/songs/${lastAction.songId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: lastAction.previousStatus })
+            });
+
+            // Remove the undone action from stack
+            setUndoStack(prev => prev.slice(0, -1));
+            await fetchData();
+        } catch (error) {
+            console.error('Error undoing action:', error);
+            alert('Failed to undo action');
         }
     };
 
@@ -164,6 +208,12 @@ function DJDashboard() {
         return minutesLeft;
     };
 
+    // Find the next song that can be played (first waiting song by position)
+    const getNextPlayableSong = () => {
+        const waitingSongs = songs.filter(s => s.status === 'waiting').sort((a, b) => a.position - b.position);
+        return waitingSongs.length > 0 ? waitingSongs[0] : null;
+    };
+
     // Filter songs based on search and status
     const filteredSongs = songs.filter(song => {
         const matchesSearch = searchTerm === '' ||
@@ -175,6 +225,8 @@ function DJDashboard() {
 
         return matchesSearch && matchesStatus;
     });
+
+    const nextPlayableSong = getNextPlayableSong();
 
     // Bulk operations
     const bulkUpdateStatus = async (status) => {
@@ -410,31 +462,56 @@ function DJDashboard() {
                         </div>
                     ) : (
                         <ul className="song-list" ref={sortableRef}>
-                            {filteredSongs.map((song) => (
-                                <li
-                                    key={song.id}
-                                    className={`song-item ${song.status} ${selectedSongs.has(song.id) ? 'selected' : ''}`}
-                                    data-song-id={song.id}
-                                >
-                                    <div className="song-header">
-                                        <div className="song-left">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedSongs.has(song.id)}
-                                                onChange={() => toggleSongSelection(song.id)}
-                                                className="song-checkbox"
-                                            />
-                                            <div className="song-position">#{song.position}</div>
-                                        </div>
-                                        <div className="song-actions">
-                                            {song.status === 'waiting' && (
-                                                <button
-                                                    className="btn btn-play"
-                                                    onClick={() => updateSongStatus(song.id, 'playing')}
-                                                >
-                                                    ▶ Play
-                                                </button>
-                                            )}
+                            {filteredSongs.map((song) => {
+                                const isNextSong = nextPlayableSong && nextPlayableSong.id === song.id;
+                                const canPlay = song.status === 'waiting' && isNextSong;
+
+                                return (
+                                    <li
+                                        key={song.id}
+                                        className={`song-item ${song.status} ${selectedSongs.has(song.id) ? 'selected' : ''} ${isNextSong ? 'next-song' : ''}`}
+                                        data-song-id={song.id}
+                                    >
+                                        <div className="song-header">
+                                            <div className="song-left">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedSongs.has(song.id)}
+                                                    onChange={() => toggleSongSelection(song.id)}
+                                                    className="song-checkbox"
+                                                />
+                                                <div className="song-position">
+                                                    #{song.position}
+                                                    {isNextSong && (
+                                                        <span style={{
+                                                            marginLeft: '8px',
+                                                            padding: '2px 6px',
+                                                            background: 'linear-gradient(135deg, #4caf50, #45a049)',
+                                                            borderRadius: '4px',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: '700',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            NEXT
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="song-actions">
+                                                {song.status === 'waiting' && (
+                                                    <button
+                                                        className="btn btn-play"
+                                                        onClick={() => updateSongStatus(song.id, 'playing')}
+                                                        disabled={!canPlay}
+                                                        style={{
+                                                            opacity: canPlay ? 1 : 0.5,
+                                                            cursor: canPlay ? 'pointer' : 'not-allowed'
+                                                        }}
+                                                        title={canPlay ? 'Play this song' : 'Reorder to play this song next'}
+                                                    >
+                                                        ▶ Play
+                                                    </button>
+                                                )}
                                             {song.status === 'playing' && (
                                                 <>
                                                     <button
@@ -520,7 +597,8 @@ function DJDashboard() {
                                         </div>
                                     )}
                                 </li>
-                            ))}
+                                );
+                            })}
                         </ul>
                     )}
                 </div>
@@ -528,6 +606,28 @@ function DJDashboard() {
                 <div className="sidebar">
                     <div className="controls-section">
                         <h3 className="section-title">Controls</h3>
+
+                        {undoStack.length > 0 && (
+                            <div className="control-group" style={{marginBottom: '15px'}}>
+                                <button
+                                    className="btn btn-undo"
+                                    onClick={undoLastAction}
+                                    style={{
+                                        background: 'linear-gradient(135deg, #ff9800, #f57c00)',
+                                        color: 'white',
+                                        fontWeight: '700',
+                                        fontSize: '16px'
+                                    }}
+                                >
+                                    ↶ Undo Last Action
+                                </button>
+                                <div style={{fontSize: '0.85rem', opacity: '0.8', marginTop: '5px', textAlign: 'center'}}>
+                                    {undoStack[undoStack.length - 1].singerName}: "{undoStack[undoStack.length - 1].songName}"
+                                    <br />
+                                    {undoStack[undoStack.length - 1].previousStatus} → {undoStack[undoStack.length - 1].newStatus}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="control-group">
                             <button

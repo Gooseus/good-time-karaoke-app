@@ -200,6 +200,17 @@ body::before {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
+.song-item.next-song {
+    background: linear-gradient(90deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.08) 100%);
+    border-color: rgba(76, 175, 80, 0.4);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 20px rgba(76, 175, 80, 0.3);
+}
+
+.song-item.next-song::before {
+    background: linear-gradient(180deg, #4caf50 0%, #45a049 100%);
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+}
+
 .song-header {
     display: flex;
     justify-content: space-between;

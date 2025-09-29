@@ -1432,6 +1432,12 @@ app.get('/queue/:sessionId', (req, res) => {
     <div class="container">
         <h1>🎵 Karaoke Queue</h1>
 
+        <div style="text-align: center; margin-bottom: 30px;">
+            <a href="/singer/${sessionId}" style="display: inline-block; background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%); color: #000; text-decoration: none; font-weight: 700; font-size: 18px; padding: 15px 30px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(255, 182, 18, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2); transition: all 0.3s ease; border: 2px solid rgba(0, 0, 0, 0.2); text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);">
+                🎤 Request a Song
+            </a>
+        </div>
+
         <!-- Current Queue Section -->
         <div class="section-header">
             <div class="section-title">Up Next</div>
