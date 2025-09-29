@@ -40,6 +40,8 @@ db.exec(`
     position INTEGER NOT NULL,
     status TEXT DEFAULT 'waiting',
     requested_at TEXT NOT NULL,
+    delayed_until TEXT,
+    delay_minutes INTEGER,
     FOREIGN KEY (session_id) REFERENCES sessions (id)
   );
 
@@ -58,14 +60,14 @@ db.exec(`
 // Handle database migrations for existing databases
 function runMigrations() {
   try {
-    // Check if tip columns exist by trying to select from them
-    const checkColumns = db.prepare("PRAGMA table_info(sessions)");
-    const columns = checkColumns.all();
-    const columnNames = columns.map(col => col.name);
+    // Check if tip columns exist in sessions table
+    const checkSessionColumns = db.prepare("PRAGMA table_info(sessions)");
+    const sessionColumns = checkSessionColumns.all();
+    const sessionColumnNames = sessionColumns.map(col => col.name);
 
-    const hasVenmo = columnNames.includes('venmo_handle');
-    const hasCashApp = columnNames.includes('cashapp_handle');
-    const hasZelle = columnNames.includes('zelle_handle');
+    const hasVenmo = sessionColumnNames.includes('venmo_handle');
+    const hasCashApp = sessionColumnNames.includes('cashapp_handle');
+    const hasZelle = sessionColumnNames.includes('zelle_handle');
 
     // Add missing tip columns if they don't exist
     if (!hasVenmo || !hasCashApp || !hasZelle) {
@@ -82,6 +84,28 @@ function runMigrations() {
       }
 
       console.log('Database migration completed successfully.');
+    }
+
+    // Check if delay columns exist in songs table
+    const checkSongColumns = db.prepare("PRAGMA table_info(songs)");
+    const songColumns = checkSongColumns.all();
+    const songColumnNames = songColumns.map(col => col.name);
+
+    const hasDelayedUntil = songColumnNames.includes('delayed_until');
+    const hasDelayMinutes = songColumnNames.includes('delay_minutes');
+
+    // Add missing delay columns if they don't exist
+    if (!hasDelayedUntil || !hasDelayMinutes) {
+      console.log('Running database migration to add delay columns...');
+
+      if (!hasDelayedUntil) {
+        db.exec('ALTER TABLE songs ADD COLUMN delayed_until TEXT');
+      }
+      if (!hasDelayMinutes) {
+        db.exec('ALTER TABLE songs ADD COLUMN delay_minutes INTEGER');
+      }
+
+      console.log('Delay columns migration completed successfully.');
     }
   } catch (error) {
     console.error('Error running database migrations:', error);
@@ -126,6 +150,18 @@ const stmts = {
 
   updateSongStatus: db.prepare(`
     UPDATE songs SET status = ? WHERE id = ?
+  `),
+
+  updateSongDetails: db.prepare(`
+    UPDATE songs SET artist = ?, song_title = ? WHERE id = ? AND status = 'waiting'
+  `),
+
+  setSongDelay: db.prepare(`
+    UPDATE songs SET delayed_until = ?, delay_minutes = ? WHERE id = ? AND status = 'waiting'
+  `),
+
+  getSongById: db.prepare(`
+    SELECT * FROM songs WHERE id = ?
   `),
 
   deleteSong: db.prepare(`
@@ -283,6 +319,21 @@ export function getUniqueSingers(sessionId) {
 
 export function getAllSessionsWithStats() {
   return stmts.getSessionStats.all();
+}
+
+export function updateSongDetails(songId, artist, songTitle) {
+  const result = stmts.updateSongDetails.run(artist, songTitle, songId);
+  return { changes: result.changes };
+}
+
+export function setSongDelay(songId, delayMinutes) {
+  const delayedUntil = new Date(Date.now() + delayMinutes * 60 * 1000).toISOString();
+  const result = stmts.setSongDelay.run(delayedUntil, delayMinutes, songId);
+  return { changes: result.changes };
+}
+
+export function getSongById(songId) {
+  return stmts.getSongById.get(songId) || null;
 }
 
 // Graceful shutdown

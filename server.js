@@ -17,7 +17,10 @@ import {
   getDeduplicatedName,
   getUniqueSingers,
   getAllSessionsWithStats,
-  updateSessionTips
+  updateSessionTips,
+  updateSongDetails,
+  setSongDelay,
+  getSongById
 } from './database-sqlite.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -638,6 +641,425 @@ ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
   res.send(html);
 });
 
+// Singer management page (for updating/cancelling/delaying requests)
+app.get('/singer/manage/:sessionId/:songId', (req, res) => {
+  const { sessionId, songId } = req.params;
+  const session = getSession(sessionId);
+  const song = getSongById(songId);
+
+  if (!session) {
+    return res.status(404).send('<h1>Session not found</h1>');
+  }
+
+  if (!song || song.session_id !== sessionId) {
+    return res.status(404).send('<h1>Song request not found</h1>');
+  }
+
+  // Calculate if delay has expired
+  let delayStatus = null;
+  if (song.delayed_until) {
+    const delayExpired = new Date(song.delayed_until) <= new Date();
+    if (!delayExpired) {
+      const minutesLeft = Math.ceil((new Date(song.delayed_until) - new Date()) / 60000);
+      delayStatus = `Currently delayed for ${minutesLeft} more minute${minutesLeft !== 1 ? 's' : ''}`;
+    }
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Request</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: white;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(165, 172, 175, 0.03) 2px, rgba(165, 172, 175, 0.03) 4px);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 182, 18, 0.3);
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 182, 18, 0.1);
+            position: relative;
+            z-index: 2;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 182, 18, 0.5), 0 0 20px rgba(255, 182, 18, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        .current-request {
+            background: linear-gradient(90deg, rgba(30, 30, 30, 0.9) 0%, rgba(45, 45, 45, 0.9) 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 182, 18, 0.2);
+        }
+        .current-request h3 {
+            margin-top: 0;
+            color: #FFB612;
+            text-shadow: 0 0 8px rgba(255, 182, 18, 0.4);
+        }
+        .request-detail {
+            margin: 10px 0;
+            font-size: 1.1rem;
+        }
+        .label {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .status-error {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.25) 0%, rgba(244, 67, 54, 0.15) 100%);
+            border: 2px solid rgba(244, 67, 54, 0.4);
+        }
+        .status-info {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.25) 0%, rgba(33, 150, 243, 0.15) 100%);
+            border: 2px solid rgba(33, 150, 243, 0.4);
+        }
+        .status-delayed {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.25) 0%, rgba(255, 152, 0, 0.15) 100%);
+            border: 2px solid rgba(255, 152, 0, 0.4);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        .section h2 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #FFB612;
+            text-shadow: 0 0 8px rgba(255, 182, 18, 0.4);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(165, 172, 175, 0.3);
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(20, 20, 20, 0.6);
+            color: #ffffff;
+            box-sizing: border-box;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #FFB612;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 182, 18, 0.3);
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .btn-update {
+            background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%);
+            color: #000000;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+        }
+        .btn-update:hover {
+            background: linear-gradient(135deg, #ff9500 0%, #FFB612 100%);
+            box-shadow: 0 6px 16px rgba(255, 182, 18, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        .btn-delay {
+            background: linear-gradient(135deg, #A5ACAF 0%, #707070 100%);
+            color: white;
+        }
+        .btn-delay:hover {
+            background: linear-gradient(135deg, #707070 0%, #A5ACAF 100%);
+            box-shadow: 0 6px 16px rgba(165, 172, 175, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        .btn-cancel {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+        .btn-cancel:hover {
+            background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+            box-shadow: 0 6px 16px rgba(244, 67, 54, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #FFB612;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .success {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.25) 0%, rgba(76, 175, 80, 0.15) 100%);
+            border: 2px solid rgba(76, 175, 80, 0.4);
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(76, 175, 80, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Manage Request</h1>
+
+        ${song.status !== 'waiting' ? `
+        <div class="status-message status-error">
+            ${song.status === 'playing' ? 'Your song is currently being performed!' :
+              song.status === 'done' ? 'Your song has already been performed!' :
+              'This request has been cancelled.'}
+        </div>
+        <a href="/queue/${sessionId}" class="back-link">← Back to Queue</a>
+        ` : `
+
+        <div class="current-request">
+            <h3>Your Current Request</h3>
+            <div class="request-detail">
+                <div class="label">Singer:</div>
+                <strong>${song.singer_name}</strong>
+            </div>
+            <div class="request-detail">
+                <div class="label">Artist:</div>
+                <strong>${song.artist}</strong>
+            </div>
+            <div class="request-detail">
+                <div class="label">Song:</div>
+                <strong>${song.song_title}</strong>
+            </div>
+            <div class="request-detail">
+                <div class="label">Position:</div>
+                <strong>#${song.position}</strong>
+            </div>
+        </div>
+
+        ${delayStatus ? `
+        <div class="status-message status-delayed">
+            ⏱ ${delayStatus}
+        </div>
+        ` : ''}
+
+        <div id="result"></div>
+
+        <!-- Update Section -->
+        <div class="section">
+            <h2>✏️ Update Song Details</h2>
+            <form id="updateForm">
+                <div class="form-group">
+                    <label for="artist">Artist</label>
+                    <input type="text" id="artist" name="artist" value="${song.artist}" required>
+                </div>
+                <div class="form-group">
+                    <label for="song_title">Song Title</label>
+                    <input type="text" id="song_title" name="song_title" value="${song.song_title}" required>
+                </div>
+                <button type="submit" class="btn-update">Update Song</button>
+            </form>
+        </div>
+
+        <!-- Delay Section -->
+        <div class="section">
+            <h2>⏱ Delay Request</h2>
+            <p style="opacity: 0.8; margin-bottom: 15px; font-size: 0.9rem;">
+                Let the DJ know you need more time before you're ready to perform.
+            </p>
+            <form id="delayForm">
+                <div class="form-group">
+                    <label for="delay_minutes">Delay Duration</label>
+                    <select id="delay_minutes" name="delay_minutes" required>
+                        <option value="">Select delay time...</option>
+                        <option value="5">5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="15">15 minutes</option>
+                        <option value="20">20 minutes</option>
+                        <option value="25">25 minutes</option>
+                        <option value="30">30 minutes</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-delay">Delay Request</button>
+            </form>
+        </div>
+
+        <!-- Cancel Section -->
+        <div class="section">
+            <h2>❌ Cancel Request</h2>
+            <p style="opacity: 0.8; margin-bottom: 15px; font-size: 0.9rem;">
+                This will remove your song from the active queue.
+            </p>
+            <button id="cancelBtn" class="btn-cancel">Cancel Request</button>
+        </div>
+
+        <a href="/queue/${sessionId}" class="back-link">← Back to Queue</a>
+        `}
+    </div>
+
+    <script>
+        const songId = ${songId};
+        const sessionId = '${sessionId}';
+
+        // Update form handler
+        document.getElementById('updateForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+
+            try {
+                const response = await fetch(\`/api/songs/\${songId}/update\`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        artist: formData.get('artist'),
+                        song_title: formData.get('song_title')
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = \`
+                        <div class="success">
+                            <h3>✅ Song Updated!</h3>
+                            <p>Your request has been updated successfully.</p>
+                            <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%); border: none; border-radius: 8px; color: #000; font-weight: 600; cursor: pointer;">
+                                Refresh Page
+                            </button>
+                        </div>
+                    \`;
+                    window.scrollTo(0, 0);
+                } else {
+                    alert(data.error || 'Failed to update song');
+                }
+            } catch (error) {
+                console.error('Error updating song:', error);
+                alert('Failed to update song');
+            }
+        });
+
+        // Delay form handler
+        document.getElementById('delayForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const delayMinutes = parseInt(formData.get('delay_minutes'));
+
+            try {
+                const response = await fetch(\`/api/songs/\${songId}/delay\`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ delay_minutes: delayMinutes })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = \`
+                        <div class="success">
+                            <h3>⏱ Request Delayed!</h3>
+                            <p>Your request has been delayed by \${delayMinutes} minutes.</p>
+                            <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%); border: none; border-radius: 8px; color: #000; font-weight: 600; cursor: pointer;">
+                                Refresh Page
+                            </button>
+                        </div>
+                    \`;
+                    window.scrollTo(0, 0);
+                } else {
+                    alert(data.error || 'Failed to delay request');
+                }
+            } catch (error) {
+                console.error('Error delaying request:', error);
+                alert('Failed to delay request');
+            }
+        });
+
+        // Cancel button handler
+        document.getElementById('cancelBtn')?.addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to cancel this request? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(\`/api/songs/\${songId}/cancel\`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = \`
+                        <div class="success">
+                            <h3>❌ Request Cancelled</h3>
+                            <p>Your request has been cancelled.</p>
+                            <a href="/queue/\${sessionId}" style="display: inline-block; margin-top: 15px; padding: 10px 20px; background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%); text-decoration: none; border-radius: 8px; color: #000; font-weight: 600;">
+                                View Queue
+                            </a>
+                        </div>
+                    \`;
+                    window.scrollTo(0, 0);
+                } else {
+                    alert(data.error || 'Failed to cancel request');
+                }
+            } catch (error) {
+                console.error('Error cancelling request:', error);
+                alert('Failed to cancel request');
+            }
+        });
+    </script>
+</body>
+</html>`;
+
+  res.send(html);
+});
+
 // Submit song request
 app.post('/api/sessions/:sessionId/songs', (req, res) => {
   try {
@@ -661,6 +1083,7 @@ app.post('/api/sessions/:sessionId/songs', (req, res) => {
 
     // Add song to queue
     const result = addSong(sessionId, finalName, artist, song_title);
+    const songId = result.lastInsertRowid;
     const songs = getSongs(sessionId);
     const position = songs.length;
 
@@ -715,11 +1138,14 @@ app.post('/api/sessions/:sessionId/songs', (req, res) => {
         <p>Estimated wait: ~${Math.round((position - 1) * session.song_duration / 60)} minutes</p>
         ${tipSection}
         <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-          <a href="/queue/${sessionId}" class="view-queue-btn" style="display: inline-block; background: linear-gradient(135deg, #4fc3f7, #29b6f6); color: white; text-decoration: none; font-weight: 600; font-size: 16px; padding: 12px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(79, 195, 247, 0.3); flex: 1; text-align: center;">
-            📋 View Live Queue
+          <a href="/queue/${sessionId}" style="display: inline-block; background: linear-gradient(135deg, #4fc3f7, #29b6f6); color: white; text-decoration: none; font-weight: 600; font-size: 16px; padding: 12px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(79, 195, 247, 0.3); flex: 1; text-align: center; min-width: 120px;">
+            📋 View Queue
           </a>
-          <button onclick="location.reload()" style="background: linear-gradient(135deg, #ff6b6b, #ff5252); color: white; border: none; font-weight: 600; font-size: 16px; padding: 12px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3); flex: 1; cursor: pointer;">
-            🎵 Request Another
+          <a href="/singer/manage/${sessionId}/${songId}" style="display: inline-block; background: linear-gradient(135deg, #FFB612, #ff9500); color: #000; text-decoration: none; font-weight: 600; font-size: 16px; padding: 12px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(255, 182, 18, 0.3); flex: 1; text-align: center; min-width: 120px;">
+            ✏️ Manage
+          </a>
+          <button onclick="location.reload()" style="background: linear-gradient(135deg, #A5ACAF, #707070); color: white; border: none; font-weight: 600; font-size: 16px; padding: 12px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(165, 172, 175, 0.3); flex: 1; cursor: pointer; min-width: 120px;">
+            🎵 Add Another
           </button>
         </div>
       </div>`;
@@ -1013,13 +1439,28 @@ app.get('/queue/:sessionId', (req, res) => {
         </div>
 
         <div id="queue">
-            ${queueSongs.map(song => `
+            ${queueSongs.map(song => {
+              // Calculate if delay has expired
+              let delayMinutesLeft = null;
+              if (song.delayed_until) {
+                const delayExpired = new Date(song.delayed_until) <= new Date();
+                if (!delayExpired) {
+                  delayMinutesLeft = Math.ceil((new Date(song.delayed_until) - new Date()) / 60000);
+                }
+              }
+
+              return `
                 <div class="song ${song.status}">
                     <div class="position">#${song.position}</div>
-                    <div class="singer">${song.singer_name}</div>
+                    <div class="singer">
+                        ${song.singer_name}
+                        ${song.status === 'skipped' ? '<span style="margin-left: 8px; padding: 2px 8px; background: linear-gradient(135deg, #f44336, #d32f2f); border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">CANCELLED</span>' : ''}
+                    </div>
                     <div class="track">"${song.song_title}" by ${song.artist}</div>
+                    ${delayMinutesLeft ? `<div style="margin-top: 8px; padding: 6px 10px; background: linear-gradient(135deg, rgba(255, 152, 0, 0.3), rgba(255, 152, 0, 0.2)); border: 1px solid rgba(255, 152, 0, 0.5); border-radius: 6px; font-size: 0.9rem; font-weight: 600; text-align: center;">⏱ Delayed: ${delayMinutesLeft} minute${delayMinutesLeft !== 1 ? 's' : ''} left</div>` : ''}
                 </div>
-            `).join('')}
+              `;
+            }).join('')}
         </div>
 
         ${queueSongs.length === 0 ? '<p style="text-align: center; opacity: 0.7;">No songs in queue yet!</p>' : ''}
@@ -1162,13 +1603,31 @@ app.get('/queue/:sessionId', (req, res) => {
                     if (queueSongs.length === 0) {
                         queueContainer.innerHTML = '<p style="text-align: center; opacity: 0.7;">No songs in queue yet!</p>';
                     } else {
-                        queueContainer.innerHTML = queueSongs.map(song => \`
-                            <div class="song \${song.status}">
-                                <div class="position">#\${song.position}</div>
-                                <div class="singer">\${song.singer_name}</div>
-                                <div class="track">"\${song.song_title}" by \${song.artist}</div>
-                            </div>
-                        \`).join('');
+                        queueContainer.innerHTML = queueSongs.map(song => {
+                            // Calculate if delay has expired
+                            let delayMinutesLeft = null;
+                            if (song.delayed_until) {
+                                const delayExpired = new Date(song.delayed_until) <= new Date();
+                                if (!delayExpired) {
+                                    delayMinutesLeft = Math.ceil((new Date(song.delayed_until) - new Date()) / 60000);
+                                }
+                            }
+
+                            const cancelledBadge = song.status === 'skipped' ?
+                                '<span style="margin-left: 8px; padding: 2px 8px; background: linear-gradient(135deg, #f44336, #d32f2f); border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">CANCELLED</span>' : '';
+
+                            const delayBadge = delayMinutesLeft ?
+                                \`<div style="margin-top: 8px; padding: 6px 10px; background: linear-gradient(135deg, rgba(255, 152, 0, 0.3), rgba(255, 152, 0, 0.2)); border: 1px solid rgba(255, 152, 0, 0.5); border-radius: 6px; font-size: 0.9rem; font-weight: 600; text-align: center;">⏱ Delayed: \${delayMinutesLeft} minute\${delayMinutesLeft !== 1 ? 's' : ''} left</div>\` : '';
+
+                            return \`
+                                <div class="song \${song.status}">
+                                    <div class="position">#\${song.position}</div>
+                                    <div class="singer">\${song.singer_name}\${cancelledBadge}</div>
+                                    <div class="track">"\${song.song_title}" by \${song.artist}</div>
+                                    \${delayBadge}
+                                </div>
+                            \`;
+                        }).join('');
                     }
                 }
 
@@ -1365,6 +1824,85 @@ app.put('/api/sessions/:sessionId/tips', (req, res) => {
   } catch (error) {
     console.error('Error updating session tips:', error);
     res.status(500).json({ error: 'Failed to update tip information' });
+  }
+});
+
+// API: Update song details (artist/title)
+app.put('/api/songs/:id/update', (req, res) => {
+  try {
+    const { artist, song_title } = req.body;
+    const song = getSongById(req.params.id);
+
+    if (!song) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
+
+    if (song.status !== 'waiting') {
+      return res.status(400).json({ error: 'Can only update songs that are waiting' });
+    }
+
+    const result = updateSongDetails(req.params.id, artist, song_title);
+
+    if (result.changes === 0) {
+      return res.status(400).json({ error: 'Failed to update song' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating song details:', error);
+    res.status(500).json({ error: 'Failed to update song details' });
+  }
+});
+
+// API: Cancel song request
+app.put('/api/songs/:id/cancel', (req, res) => {
+  try {
+    const song = getSongById(req.params.id);
+
+    if (!song) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
+
+    if (song.status !== 'waiting') {
+      return res.status(400).json({ error: 'Can only cancel songs that are waiting' });
+    }
+
+    updateSongStatus(req.params.id, 'skipped');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error cancelling song:', error);
+    res.status(500).json({ error: 'Failed to cancel song' });
+  }
+});
+
+// API: Delay song request
+app.put('/api/songs/:id/delay', (req, res) => {
+  try {
+    const { delay_minutes } = req.body;
+    const song = getSongById(req.params.id);
+
+    if (!song) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
+
+    if (song.status !== 'waiting') {
+      return res.status(400).json({ error: 'Can only delay songs that are waiting' });
+    }
+
+    if (!delay_minutes || delay_minutes < 1 || delay_minutes > 30) {
+      return res.status(400).json({ error: 'Delay must be between 1 and 30 minutes' });
+    }
+
+    const result = setSongDelay(req.params.id, delay_minutes);
+
+    if (result.changes === 0) {
+      return res.status(400).json({ error: 'Failed to delay song' });
+    }
+
+    res.json({ success: true, delayed_until: new Date(Date.now() + delay_minutes * 60 * 1000).toISOString() });
+  } catch (error) {
+    console.error('Error delaying song:', error);
+    res.status(500).json({ error: 'Failed to delay song' });
   }
 });
 

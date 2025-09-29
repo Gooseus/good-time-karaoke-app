@@ -151,6 +151,19 @@ function DJDashboard() {
         return Math.round(totalWaitMinutes);
     };
 
+    // Check if delay has expired
+    const isDelayExpired = (delayedUntil) => {
+        if (!delayedUntil) return true;
+        return new Date(delayedUntil) <= new Date();
+    };
+
+    // Calculate remaining delay time
+    const getRemainingDelayTime = (delayedUntil) => {
+        if (!delayedUntil || isDelayExpired(delayedUntil)) return null;
+        const minutesLeft = Math.ceil((new Date(delayedUntil) - new Date()) / 60000);
+        return minutesLeft;
+    };
+
     // Filter songs based on search and status
     const filteredSongs = songs.filter(song => {
         const matchesSearch = searchTerm === '' ||
@@ -464,7 +477,22 @@ function DJDashboard() {
                                     </div>
 
                                     <div className="song-info">
-                                        <div className="singer-name">{song.singer_name}</div>
+                                        <div className="singer-name">
+                                            {song.singer_name}
+                                            {song.status === 'skipped' && (
+                                                <span style={{
+                                                    marginLeft: '8px',
+                                                    padding: '2px 8px',
+                                                    background: 'linear-gradient(135deg, #f44336, #d32f2f)',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '700',
+                                                    textTransform: 'uppercase'
+                                                }}>
+                                                    Cancelled
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="song-details">
                                             "{song.song_title}" by {song.artist}
                                         </div>
@@ -472,7 +500,23 @@ function DJDashboard() {
 
                                     {song.status === 'waiting' && (
                                         <div className="wait-time">
-                                            Est. wait: {isPaused ? 'Paused' : `~${calculateWaitTime(song.position, songDuration)} min`}
+                                            {(() => {
+                                                const delayTime = getRemainingDelayTime(song.delayed_until);
+                                                if (delayTime) {
+                                                    return (
+                                                        <span style={{
+                                                            background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.3), rgba(255, 152, 0, 0.2))',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid rgba(255, 152, 0, 0.5)',
+                                                            fontWeight: '600'
+                                                        }}>
+                                                            ⏱ Delayed: {delayTime} min left
+                                                        </span>
+                                                    );
+                                                }
+                                                return `Est. wait: ${isPaused ? 'Paused' : `~${calculateWaitTime(song.position, songDuration)} min`}`;
+                                            })()}
                                         </div>
                                     )}
                                 </li>
