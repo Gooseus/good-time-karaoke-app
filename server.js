@@ -117,21 +117,41 @@ app.get('/singer/:sessionId', (req, res) => {
             max-width: 400px;
             margin: 0 auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             color: white;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(165, 172, 175, 0.03) 2px, rgba(165, 172, 175, 0.03) 4px);
+            pointer-events: none;
+            z-index: 1;
         }
         .container {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%);
             backdrop-filter: blur(10px);
             border-radius: 20px;
+            border: 2px solid rgba(255, 182, 18, 0.3);
             padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 182, 18, 0.1);
+            position: relative;
+            z-index: 2;
         }
         h1 {
             text-align: center;
             margin-bottom: 30px;
             font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 182, 18, 0.5), 0 0 20px rgba(255, 182, 18, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
         .form-group {
             margin-bottom: 20px;
@@ -144,11 +164,21 @@ app.get('/singer/:sessionId', (req, res) => {
         input, select {
             width: 100%;
             padding: 15px;
-            border: none;
+            border: 2px solid rgba(165, 172, 175, 0.3);
             border-radius: 10px;
             font-size: 16px;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(20, 20, 20, 0.6);
+            color: #ffffff;
             box-sizing: border-box;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #FFB612;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 182, 18, 0.3);
+        }
+        input::placeholder {
+            color: rgba(165, 172, 175, 0.6);
         }
         select {
             cursor: pointer;
@@ -156,17 +186,23 @@ app.get('/singer/:sessionId', (req, res) => {
         button {
             width: 100%;
             padding: 15px;
-            background: #ff6b6b;
-            color: white;
-            border: none;
+            background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%);
+            color: #000000;
+            border: 2px solid rgba(0, 0, 0, 0.2);
             border-radius: 10px;
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 900;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         button:hover {
-            background: #ff5252;
+            background: linear-gradient(135deg, #ff9500 0%, #FFB612 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 182, 18, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
         button:disabled {
             background: #ccc;
@@ -175,14 +211,18 @@ app.get('/singer/:sessionId', (req, res) => {
         .success {
             text-align: center;
             padding: 20px;
-            background: rgba(76, 175, 80, 0.2);
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.25) 0%, rgba(76, 175, 80, 0.15) 100%);
+            border: 2px solid rgba(76, 175, 80, 0.4);
             border-radius: 10px;
             margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(76, 175, 80, 0.2);
         }
         .error {
-            color: #ff6b6b;
+            color: #FFB612;
             margin-top: 10px;
             text-align: center;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(255, 182, 18, 0.5);
         }
         .queue-link {
             text-align: center;
@@ -190,31 +230,40 @@ app.get('/singer/:sessionId', (req, res) => {
         }
         .view-queue-btn {
             display: inline-block;
-            background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+            background: linear-gradient(135deg, #A5ACAF 0%, #707070 100%);
             color: white;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 18px;
             padding: 15px 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.3);
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
             transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .view-queue-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 195, 247, 0.4);
-            background: linear-gradient(135deg, #29b6f6, #4fc3f7);
+            box-shadow: 0 6px 20px rgba(165, 172, 175, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #707070 0%, #A5ACAF 100%);
         }
         .tip-section {
             margin-top: 30px;
-            background: rgba(255, 255, 255, 0.15);
+            background: linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(45, 45, 45, 0.9) 100%);
+            border: 2px solid rgba(255, 182, 18, 0.2);
             border-radius: 15px;
             padding: 25px;
             text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
         }
         .tip-section h3 {
             margin-bottom: 10px;
             font-size: 1.3rem;
+            font-weight: 900;
+            color: #FFB612;
+            text-shadow: 0 0 10px rgba(255, 182, 18, 0.4);
+            letter-spacing: 1px;
         }
         .tip-section p {
             margin-bottom: 20px;
@@ -270,6 +319,96 @@ app.get('/singer/:sessionId', (req, res) => {
         .tip-button:hover:not(.zelle) {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        /* QR Code Modal */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .qr-modal-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 245, 245, 0.98) 100%);
+            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            border: 3px solid #FFB612;
+            padding: 40px;
+            text-align: center;
+            max-width: 90vw;
+            max-height: 90vh;
+            color: #000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 182, 18, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            animation: scaleIn 0.3s ease;
+            position: relative;
+        }
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .qr-modal h3 {
+            margin-bottom: 25px;
+            color: #000;
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .qr-code-container {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            margin: 25px 0;
+            display: inline-block;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), inset 0 0 0 2px #FFB612;
+        }
+        .qr-modal p {
+            color: #666;
+            font-size: 1rem;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%);
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: 900;
+            cursor: pointer;
+            color: #000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-modal:hover {
+            background: linear-gradient(135deg, #ff9500 0%, #FFB612 100%);
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 6px 16px rgba(255, 182, 18, 0.5);
         }
     </style>
 </head>
@@ -365,11 +504,11 @@ ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = ''; // Clear previous QR code
 
-            // Use QR Server API for reliable QR generation
+            // Use QR Server API for reliable QR generation (larger size)
             const img = document.createElement('img');
-            img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=\${encodeURIComponent(url)}\`;
-            img.style.width = '200px';
-            img.style.height = '200px';
+            img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=\${encodeURIComponent(url)}\`;
+            img.style.width = '300px';
+            img.style.height = '300px';
             img.style.display = 'block';
             img.style.margin = '0 auto';
             img.alt = 'QR Code';
@@ -382,7 +521,7 @@ ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
             };
             qrContainer.appendChild(img);
 
-            document.getElementById('qrModal').style.display = 'block';
+            document.getElementById('qrModal').style.display = 'flex';
         }
 
         function closeQRModal() {
@@ -392,6 +531,13 @@ ${(session.venmo_handle || session.cashapp_handle || session.zelle_handle) ? `
         // Close modal when clicking outside
         document.getElementById('qrModal').addEventListener('click', function(e) {
             if (e.target === this) {
+                closeQRModal();
+            }
+        });
+
+        // Close modal with ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
                 closeQRModal();
             }
         });
@@ -611,43 +757,86 @@ app.get('/queue/:sessionId', (req, res) => {
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             color: white;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(165, 172, 175, 0.03) 2px, rgba(165, 172, 175, 0.03) 4px);
+            pointer-events: none;
+            z-index: 1;
         }
         .container {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%);
             backdrop-filter: blur(10px);
             border-radius: 20px;
+            border: 2px solid rgba(255, 182, 18, 0.3);
             padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 182, 18, 0.1);
+            position: relative;
+            z-index: 2;
         }
         h1 {
             text-align: center;
             margin-bottom: 30px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 182, 18, 0.5), 0 0 20px rgba(255, 182, 18, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
         .song {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(90deg, rgba(30, 30, 30, 0.9) 0%, rgba(45, 45, 45, 0.9) 100%);
             margin-bottom: 15px;
             padding: 20px;
             border-radius: 10px;
-            border-left: 4px solid #ff6b6b;
+            border: 1px solid rgba(165, 172, 175, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            position: relative;
+            padding-left: 24px;
+        }
+        .song::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #FFB612 0%, #ff9500 100%);
+            box-shadow: 0 0 10px rgba(255, 182, 18, 0.5);
+            border-radius: 10px 0 0 10px;
         }
         .song.playing {
-            border-left-color: #4caf50;
-            background: rgba(76, 175, 80, 0.2);
+            background: linear-gradient(90deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.1) 100%);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 20px rgba(76, 175, 80, 0.3);
+        }
+        .song.playing::before {
+            background: linear-gradient(180deg, #4caf50 0%, #45a049 100%);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
         }
         .song.done {
-            opacity: 0.6;
-            border-left-color: #999;
+            opacity: 0.5;
+        }
+        .song.done::before {
+            background: linear-gradient(180deg, #999 0%, #666 100%);
+            box-shadow: none;
         }
         .position {
             font-size: 1.2em;
-            font-weight: bold;
-            color: #ff6b6b;
+            font-weight: 900;
+            color: #FFB612;
+            text-shadow: 0 0 5px rgba(255, 182, 18, 0.5);
         }
         .song.playing .position {
             color: #4caf50;
+            text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
         }
         .singer {
             font-size: 1.1em;
@@ -661,15 +850,21 @@ app.get('/queue/:sessionId', (req, res) => {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: #ff6b6b;
-            color: white;
-            border: none;
+            background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%);
+            color: #000000;
+            border: 2px solid rgba(0, 0, 0, 0.3);
             border-radius: 50%;
             width: 60px;
             height: 60px;
             font-size: 24px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        .refresh-btn:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 6px 16px rgba(255, 182, 18, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
         .section-header {
             display: flex;
@@ -723,47 +918,87 @@ app.get('/queue/:sessionId', (req, res) => {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            backdrop-filter: blur(5px);
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         .qr-modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 245, 245, 0.98) 100%);
             backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
+            border-radius: 25px;
+            border: 3px solid #FFB612;
+            padding: 40px;
             text-align: center;
             max-width: 90vw;
             max-height: 90vh;
-            color: #333;
+            color: #000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 182, 18, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            animation: scaleIn 0.3s ease;
+            position: relative;
+        }
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
         .qr-modal h3 {
-            margin-bottom: 20px;
-            color: #333;
+            margin-bottom: 25px;
+            color: #000;
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .qr-code-container {
             background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 20px 0;
+            padding: 25px;
+            border-radius: 20px;
+            margin: 25px 0;
             display: inline-block;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), inset 0 0 0 2px #FFB612;
+        }
+        .qr-modal p {
+            color: #666;
+            font-size: 1rem;
+            margin-top: 15px;
+            font-weight: 600;
         }
         .close-modal {
             position: absolute;
             top: 15px;
             right: 20px;
-            background: none;
-            border: none;
+            background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%);
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             font-size: 24px;
+            font-weight: 900;
             cursor: pointer;
-            color: #666;
+            color: #000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .close-modal:hover {
-            color: #333;
+            background: linear-gradient(135deg, #ff9500 0%, #FFB612 100%);
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 6px 16px rgba(255, 182, 18, 0.5);
         }
     </style>
 </head>
@@ -862,11 +1097,11 @@ app.get('/queue/:sessionId', (req, res) => {
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = ''; // Clear previous QR code
 
-            // Use QR Server API for reliable QR generation
+            // Use QR Server API for reliable QR generation (larger size)
             const img = document.createElement('img');
-            img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=\${encodeURIComponent(url)}\`;
-            img.style.width = '200px';
-            img.style.height = '200px';
+            img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=\${encodeURIComponent(url)}\`;
+            img.style.width = '300px';
+            img.style.height = '300px';
             img.style.display = 'block';
             img.style.margin = '0 auto';
             img.alt = 'QR Code';
@@ -879,7 +1114,7 @@ app.get('/queue/:sessionId', (req, res) => {
             };
             qrContainer.appendChild(img);
 
-            document.getElementById('qrModal').style.display = 'block';
+            document.getElementById('qrModal').style.display = 'flex';
         }
 
         function closeQRModal() {
@@ -889,6 +1124,13 @@ app.get('/queue/:sessionId', (req, res) => {
         // Close modal when clicking outside
         document.getElementById('qrModal').addEventListener('click', function(e) {
             if (e.target === this) {
+                closeQRModal();
+            }
+        });
+
+        // Close modal with ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
                 closeQRModal();
             }
         });
@@ -1154,10 +1396,27 @@ app.get('/admin', (req, res) => {
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             color: white;
             padding: 20px;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(165, 172, 175, 0.03) 2px, rgba(165, 172, 175, 0.03) 4px);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .container {
+            position: relative;
+            z-index: 2;
         }
 
         .container {
@@ -1173,6 +1432,10 @@ app.get('/admin', (req, res) => {
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 182, 18, 0.5), 0 0 20px rgba(255, 182, 18, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
 
         .stats-grid {
@@ -1183,17 +1446,21 @@ app.get('/admin', (req, res) => {
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%);
             backdrop-filter: blur(10px);
             border-radius: 15px;
+            border: 2px solid rgba(255, 182, 18, 0.3);
             padding: 20px;
             text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
         }
 
         .stat-number {
             font-size: 2rem;
-            font-weight: bold;
+            font-weight: 900;
             margin-bottom: 5px;
+            color: #FFB612;
+            text-shadow: 0 0 10px rgba(255, 182, 18, 0.4);
         }
 
         .stat-label {
@@ -1201,10 +1468,12 @@ app.get('/admin', (req, res) => {
         }
 
         .sessions-section {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%);
             backdrop-filter: blur(10px);
             border-radius: 15px;
+            border: 2px solid rgba(165, 172, 175, 0.2);
             padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
 
         .section-title {
@@ -1220,21 +1489,23 @@ app.get('/admin', (req, res) => {
         }
 
         .session-card {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(90deg, rgba(30, 30, 30, 0.9) 0%, rgba(45, 45, 45, 0.9) 100%);
             border-radius: 10px;
             padding: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(165, 172, 175, 0.2);
             transition: all 0.3s ease;
             cursor: pointer;
             text-decoration: none;
             color: inherit;
             display: block;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
         .session-card:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(90deg, rgba(40, 40, 40, 0.9) 0%, rgba(55, 55, 55, 0.9) 100%);
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(255, 182, 18, 0.2);
+            border-color: rgba(255, 182, 18, 0.4);
         }
 
         .session-header {
@@ -1246,7 +1517,10 @@ app.get('/admin', (req, res) => {
 
         .session-id {
             font-size: 1.2rem;
-            font-weight: bold;
+            font-weight: 900;
+            color: #FFB612;
+            text-shadow: 0 0 8px rgba(255, 182, 18, 0.4);
+            letter-spacing: 2px;
         }
 
         .session-date {
@@ -1294,15 +1568,22 @@ app.get('/admin', (req, res) => {
             display: inline-block;
             margin-bottom: 20px;
             padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, #A5ACAF 0%, #707070 100%);
             color: white;
             text-decoration: none;
             border-radius: 5px;
-            transition: background 0.3s ease;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
         .back-link:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #707070 0%, #A5ACAF 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(165, 172, 175, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         @media (max-width: 768px) {
@@ -1462,9 +1743,22 @@ app.get('/', (req, res) => {
             margin: 50px auto;
             padding: 20px;
             text-align: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             color: white;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(165, 172, 175, 0.03) 2px, rgba(165, 172, 175, 0.03) 4px);
+            pointer-events: none;
+            z-index: 1;
         }
         .container {
             background: rgba(255, 255, 255, 0.1);
@@ -1476,17 +1770,25 @@ app.get('/', (req, res) => {
         h1 {
             margin-bottom: 20px;
             font-size: 2.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 182, 18, 0.5), 0 0 20px rgba(255, 182, 18, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
         .subtitle {
             margin-bottom: 30px;
             opacity: 0.9;
         }
         .form-section {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%);
+            border: 2px solid rgba(255, 182, 18, 0.3);
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 20px;
             text-align: left;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 182, 18, 0.1);
+            position: relative;
+            z-index: 2;
         }
         .form-group {
             margin-bottom: 20px;
@@ -1500,14 +1802,22 @@ app.get('/', (req, res) => {
         input {
             width: 100%;
             padding: 12px;
-            border: none;
+            border: 2px solid rgba(165, 172, 175, 0.3);
             border-radius: 8px;
             font-size: 16px;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(20, 20, 20, 0.6);
+            color: #ffffff;
             box-sizing: border-box;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        input:focus {
+            outline: none;
+            border-color: #FFB612;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 182, 18, 0.3);
         }
         input::placeholder {
             opacity: 0.6;
+            color: rgba(165, 172, 175, 0.6);
         }
         .tip-section {
             margin-top: 20px;
@@ -1515,7 +1825,10 @@ app.get('/', (req, res) => {
         .tip-subtitle {
             font-size: 1.1rem;
             margin-bottom: 15px;
-            color: #4fc3f7;
+            color: #FFB612;
+            font-weight: 900;
+            text-shadow: 0 0 8px rgba(255, 182, 18, 0.4);
+            letter-spacing: 1px;
         }
         .tip-note {
             font-size: 0.9rem;
@@ -1523,32 +1836,47 @@ app.get('/', (req, res) => {
             margin-bottom: 15px;
         }
         button {
-            background: #ff6b6b;
-            color: white;
-            border: none;
+            background: linear-gradient(135deg, #FFB612 0%, #ff9500 100%);
+            color: #000000;
+            border: 2px solid rgba(0, 0, 0, 0.2);
             padding: 15px 30px;
             font-size: 18px;
             border-radius: 10px;
             cursor: pointer;
             margin: 10px;
             width: 100%;
-            transition: background 0.3s;
+            transition: all 0.3s;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         button:hover {
-            background: #ff5252;
+            background: linear-gradient(135deg, #ff9500 0%, #FFB612 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 182, 18, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
         .admin-link {
             display: inline-block;
             padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, #A5ACAF 0%, #707070 100%);
             color: white;
             text-decoration: none;
             border-radius: 5px;
-            font-weight: 500;
-            transition: background 0.3s ease;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            font-weight: 700;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            z-index: 2;
         }
         .admin-link:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #707070 0%, #A5ACAF 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(165, 172, 175, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
     </style>
 </head>
