@@ -3,13 +3,13 @@ const { useState, useEffect, useRef } = React;
 function DJDashboard() {
     const [sessionId, setSessionId] = useState('');
     const [session, setSession] = useState(null);
+    const [sessionState, setSessionState] = useState(null); // XState session state
     const [songs, setSongs] = useState([]);
     const [stats, setStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [songDuration, setSongDuration] = useState(270);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
-    const [isPaused, setIsPaused] = useState(false);
     const [selectedSongs, setSelectedSongs] = useState(new Set());
     const [showTipSettings, setShowTipSettings] = useState(false);
     const [tipHandles, setTipHandles] = useState({
@@ -27,7 +27,7 @@ function DJDashboard() {
         setSessionId(id);
     }, []);
 
-    // Fetch session data
+    // Fetch session data and state
     useEffect(() => {
         if (!sessionId) return;
 
@@ -49,7 +49,20 @@ function DJDashboard() {
             }
         }
 
+        async function fetchSessionState() {
+            try {
+                const response = await fetch(`/api/sessions/${sessionId}/state`);
+                if (response.ok) {
+                    const state = await response.json();
+                    setSessionState(state);
+                }
+            } catch (error) {
+                console.error('Error fetching session state:', error);
+            }
+        }
+
         fetchSession();
+        fetchSessionState();
     }, [sessionId]);
 
     // Fetch songs and stats
@@ -111,8 +124,8 @@ function DJDashboard() {
         return () => sortable.destroy();
     }, [songs, sessionId]);
 
-    // Update song status
-    const updateSongStatus = async (songId, status) => {
+    // Transition song using XState machine
+    const transitionSong = async (songId, event) => {
         try {
             // Save current state for undo
             const song = songs.find(s => s.id === songId);
@@ -120,7 +133,7 @@ function DJDashboard() {
                 setUndoStack(prev => [...prev.slice(-9), { // Keep last 10 actions
                     songId: song.id,
                     previousStatus: song.status,
-                    newStatus: status,
+                    newStatus: event,
                     songName: song.song_title,
                     artist: song.artist,
                     singerName: song.singer_name,
@@ -128,14 +141,21 @@ function DJDashboard() {
                 }]);
             }
 
-            await fetch(`/api/songs/${songId}/status`, {
-                method: 'PUT',
+            const response = await fetch(`/api/songs/${songId}/transition`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status })
+                body: JSON.stringify({ event })
             });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Transition failed');
+            }
+
             await fetchData();
         } catch (error) {
-            console.error('Error updating song status:', error);
+            console.error('Error transitioning song:', error);
+            alert(`Cannot ${event.toLowerCase()} song: ${error.message}`);
         }
     };
 
@@ -188,6 +208,7 @@ function DJDashboard() {
 
     // Calculate wait time
     const calculateWaitTime = (position, currentSongDuration) => {
+        const isPaused = sessionState?.value === 'paused';
         if (isPaused) return 'Paused';
         const waitingSongs = songs.filter(s => s.position < position && s.status === 'waiting').length;
         const playingSongs = songs.filter(s => s.status === 'playing').length;
@@ -373,7 +394,7 @@ function DJDashboard() {
                 <div className="queue-section">
                     <div className="queue-header">
                         <h2 className="section-title">Song Queue</h2>
-                        {isPaused && <div className="pause-indicator">⏸ PAUSED</div>}
+                        {sessionState?.value === 'paused' && <div className="pause-indicator">⏸ PAUSED</div>}
                     </div>
 
                     {songs.length > 0 && (
@@ -501,7 +522,7 @@ function DJDashboard() {
                                                 {song.status === 'waiting' && (
                                                     <button
                                                         className="btn btn-play"
-                                                        onClick={() => updateSongStatus(song.id, 'playing')}
+                                                        onClick={() => transitionSong(song.id, 'PLAY')}
                                                         disabled={!canPlay}
                                                         style={{
                                                             opacity: canPlay ? 1 : 0.5,
@@ -516,13 +537,13 @@ function DJDashboard() {
                                                 <>
                                                     <button
                                                         className="btn btn-done"
-                                                        onClick={() => updateSongStatus(song.id, 'done')}
+                                                        onClick={() => transitionSong(song.id, 'COMPLETE')}
                                                     >
                                                         ✓ Done
                                                     </button>
                                                     <button
                                                         className="btn btn-skip"
-                                                        onClick={() => updateSongStatus(song.id, 'skipped')}
+                                                        onClick={() => transitionSong(song.id, 'SKIP')}
                                                     >
                                                         ⏭ Skip
                                                     </button>
@@ -531,7 +552,7 @@ function DJDashboard() {
                                             {song.status === 'waiting' && (
                                                 <button
                                                     className="btn btn-skip"
-                                                    onClick={() => updateSongStatus(song.id, 'skipped')}
+                                                    onClick={() => transitionSong(song.id, 'SKIP')}
                                                 >
                                                     ⏭ Skip
                                                 </button>
@@ -592,7 +613,7 @@ function DJDashboard() {
                                                         </span>
                                                     );
                                                 }
-                                                return `Est. wait: ${isPaused ? 'Paused' : `~${calculateWaitTime(song.position, songDuration)} min`}`;
+                                                return `Est. wait: ${sessionState?.value === 'paused' ? 'Paused' : `~${calculateWaitTime(song.position, songDuration)} min`}`;
                                             })()}
                                         </div>
                                     )}
@@ -631,10 +652,28 @@ function DJDashboard() {
 
                         <div className="control-group">
                             <button
-                                className={`btn ${isPaused ? 'btn-play' : 'btn-pause'} btn-large`}
-                                onClick={() => setIsPaused(!isPaused)}
+                                className={`btn ${sessionState?.value === 'paused' ? 'btn-play' : 'btn-pause'} btn-large`}
+                                onClick={async () => {
+                                    const event = sessionState?.value === 'active' ? 'PAUSE' : 'RESUME';
+                                    try {
+                                        await fetch(`/api/sessions/${sessionId}/transition`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ event })
+                                        });
+                                        // Refresh session state
+                                        const response = await fetch(`/api/sessions/${sessionId}/state`);
+                                        if (response.ok) {
+                                            const newState = await response.json();
+                                            setSessionState(newState);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error toggling pause:', error);
+                                        alert('Failed to update session state');
+                                    }
+                                }}
                             >
-                                {isPaused ? '▶ Resume Queue' : '⏸ Pause Queue'}
+                                {sessionState?.value === 'paused' ? '▶ Resume Queue' : '⏸ Pause Queue'}
                             </button>
                         </div>
 

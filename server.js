@@ -18,10 +18,18 @@ import {
   getUniqueSingers,
   getAllSessionsWithStats,
   updateSessionTips,
+  updateSessionStatus,
   updateSongDetails,
   setSongDelay,
   getSongById
 } from './database-sqlite.js';
+import {
+  getSongState,
+  transitionSong,
+  canTransitionSong,
+  getSessionState,
+  transitionSession
+} from './src/services/state-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -94,6 +102,58 @@ app.get('/api/sessions/:id', (req, res) => {
   } catch (error) {
     console.error('Error getting session:', error);
     res.status(500).json({ error: 'Failed to get session' });
+  }
+});
+
+// Singer state banner (HTMX partial)
+app.get('/api/sessions/:id/state-banner', (req, res) => {
+  try {
+    const sessionState = getSessionState(req.params.id);
+    if (!sessionState) {
+      return res.send(''); // Return empty if no state
+    }
+
+    const stateBanners = {
+      active: '',  // No banner for active state
+      paused: `
+        <div style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.3), rgba(255, 152, 0, 0.2));
+                    border: 2px solid rgba(255, 152, 0, 0.5);
+                    border-radius: 10px;
+                    padding: 15px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                    font-weight: 600;">
+          ⏸️ Queue is currently paused - You can still submit requests!
+        </div>
+      `,
+      ending: `
+        <div style="background: linear-gradient(135deg, rgba(255, 87, 34, 0.3), rgba(255, 87, 34, 0.2));
+                    border: 2px solid rgba(255, 87, 34, 0.5);
+                    border-radius: 10px;
+                    padding: 15px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                    font-weight: 600;">
+          ⚠️ Session is ending soon - Submit your requests now!
+        </div>
+      `,
+      ended: `
+        <div style="background: linear-gradient(135deg, rgba(244, 67, 54, 0.3), rgba(244, 67, 54, 0.2));
+                    border: 2px solid rgba(244, 67, 54, 0.5);
+                    border-radius: 10px;
+                    padding: 15px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                    font-weight: 600;">
+          🔴 This session has ended - Thank you for singing!
+        </div>
+      `
+    };
+
+    res.send(stateBanners[sessionState.value] || '');
+  } catch (error) {
+    console.error('Error getting session state banner:', error);
+    res.send('');
   }
 });
 
@@ -418,6 +478,14 @@ app.get('/singer/:sessionId', (req, res) => {
 <body>
     <div class="container">
         <h1>🎤 Song Request</h1>
+
+        <!-- Session state banner -->
+        <div id="session-state-banner"
+             hx-get="/api/sessions/${sessionId}/state-banner"
+             hx-trigger="load, every 10s"
+             hx-swap="innerHTML">
+            <!-- State will be loaded here -->
+        </div>
 
         <form hx-post="/api/sessions/${sessionId}/songs"
               hx-target="#result"
@@ -1912,6 +1980,81 @@ app.put('/api/songs/:id/delay', (req, res) => {
   }
 });
 
+// XState API Endpoints
+
+// API: Get song state machine state
+app.get('/api/songs/:id/state', (req, res) => {
+  try {
+    const songState = getSongState(req.params.id);
+    if (!songState) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
+    res.json(songState);
+  } catch (error) {
+    console.error('Error getting song state:', error);
+    res.status(500).json({ error: 'Failed to get song state' });
+  }
+});
+
+// API: Transition song to new state via state machine
+app.post('/api/songs/:id/transition', (req, res) => {
+  try {
+    const { event } = req.body;
+
+    if (!event) {
+      return res.status(400).json({ error: 'Event is required' });
+    }
+
+    const result = transitionSong(req.params.id, event);
+    res.json(result);
+  } catch (error) {
+    console.error('Error transitioning song:', error);
+    res.status(500).json({ error: error.message || 'Failed to transition song' });
+  }
+});
+
+// API: Check if song can transition
+app.get('/api/songs/:id/can-transition/:event', (req, res) => {
+  try {
+    const canTransition = canTransitionSong(req.params.id, req.params.event);
+    res.json({ canTransition });
+  } catch (error) {
+    console.error('Error checking transition:', error);
+    res.status(500).json({ error: 'Failed to check transition' });
+  }
+});
+
+// API: Get session state machine state
+app.get('/api/sessions/:id/state', (req, res) => {
+  try {
+    const sessionState = getSessionState(req.params.id);
+    if (!sessionState) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    res.json(sessionState);
+  } catch (error) {
+    console.error('Error getting session state:', error);
+    res.status(500).json({ error: 'Failed to get session state' });
+  }
+});
+
+// API: Transition session to new state via state machine
+app.post('/api/sessions/:id/transition', (req, res) => {
+  try {
+    const { event } = req.body;
+
+    if (!event) {
+      return res.status(400).json({ error: 'Event is required' });
+    }
+
+    const result = transitionSession(req.params.id, event);
+    res.json(result);
+  } catch (error) {
+    console.error('Error transitioning session:', error);
+    res.status(500).json({ error: error.message || 'Failed to transition session' });
+  }
+});
+
 // Admin API endpoint
 app.get('/api/admin/sessions', (req, res) => {
   try {
@@ -2102,6 +2245,40 @@ app.get('/admin', (req, res) => {
             opacity: 0.8;
         }
 
+        .session-state-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .state-active {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
+        }
+
+        .state-paused {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+        }
+
+        .state-ending {
+            background: linear-gradient(135deg, #ff5722, #e64a19);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 87, 34, 0.4);
+        }
+
+        .state-ended {
+            background: linear-gradient(135deg, #9e9e9e, #757575);
+            color: white;
+            box-shadow: 0 0 10px rgba(158, 158, 158, 0.4);
+        }
+
         .loading {
             text-align: center;
             padding: 40px;
@@ -2187,8 +2364,24 @@ app.get('/admin', (req, res) => {
                 const response = await fetch('/api/admin/sessions');
                 const data = await response.json();
 
-                displayOverviewStats(data.sessions);
-                displaySessions(data.sessions);
+                // Fetch session states
+                const sessionsWithStates = await Promise.all(
+                    data.sessions.map(async (session) => {
+                        try {
+                            const stateResponse = await fetch(\`/api/sessions/\${session.id}/state\`);
+                            if (stateResponse.ok) {
+                                const stateData = await stateResponse.json();
+                                return { ...session, state: stateData.value };
+                            }
+                        } catch (error) {
+                            console.error(\`Error fetching state for session \${session.id}:\`, error);
+                        }
+                        return { ...session, state: 'active' }; // Default to active if fetch fails
+                    })
+                );
+
+                displayOverviewStats(sessionsWithStates);
+                displaySessions(sessionsWithStates);
             } catch (error) {
                 console.error('Error loading admin data:', error);
                 document.getElementById('sessions-container').innerHTML =
@@ -2226,12 +2419,35 @@ app.get('/admin', (req, res) => {
                     minute: '2-digit'
                 });
 
+                const stateIcons = {
+                    active: '🟢',
+                    paused: '⏸️',
+                    ending: '⏹️',
+                    ended: '🔴'
+                };
+
+                const stateLabels = {
+                    active: 'Active',
+                    paused: 'Paused',
+                    ending: 'Ending',
+                    ended: 'Ended'
+                };
+
+                const stateIcon = stateIcons[session.state] || '🟢';
+                const stateLabel = stateLabels[session.state] || 'Active';
+                const stateClass = \`state-\${session.state || 'active'}\`;
+
                 return \`
                     <a href="/dj/\${session.id}" class="session-card">
                         <div class="session-header">
                             <div class="session-id">\${session.id}</div>
-                            <div class="session-date">\${date}</div>
+                            <div>
+                                <span class="session-state-badge \${stateClass}">
+                                    \${stateIcon} \${stateLabel}
+                                </span>
+                            </div>
                         </div>
+                        <div style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 10px;">\${date}</div>
 
                         <div class="session-stats">
                             <div class="session-stat">

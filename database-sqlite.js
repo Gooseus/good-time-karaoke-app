@@ -68,6 +68,7 @@ function runMigrations() {
     const hasVenmo = sessionColumnNames.includes('venmo_handle');
     const hasCashApp = sessionColumnNames.includes('cashapp_handle');
     const hasZelle = sessionColumnNames.includes('zelle_handle');
+    const hasStatus = sessionColumnNames.includes('status');
 
     // Add missing tip columns if they don't exist
     if (!hasVenmo || !hasCashApp || !hasZelle) {
@@ -84,6 +85,15 @@ function runMigrations() {
       }
 
       console.log('Database migration completed successfully.');
+    }
+
+    // Add session status column for state machine support
+    if (!hasStatus) {
+      console.log('Running database migration to add session status column...');
+      db.exec('ALTER TABLE sessions ADD COLUMN status TEXT DEFAULT "active"');
+      // Update existing sessions to have active status
+      db.exec('UPDATE sessions SET status = "active" WHERE status IS NULL');
+      console.log('Session status column migration completed successfully.');
     }
 
     // Check if delay columns exist in songs table
@@ -119,8 +129,8 @@ runMigrations();
 // Prepared statements for performance
 const stmts = {
   createSession: db.prepare(`
-    INSERT INTO sessions (id, created_at, song_duration, is_active, venmo_handle, cashapp_handle, zelle_handle)
-    VALUES (?, ?, ?, 1, ?, ?, ?)
+    INSERT INTO sessions (id, created_at, song_duration, is_active, venmo_handle, cashapp_handle, zelle_handle, status)
+    VALUES (?, ?, ?, 1, ?, ?, ?, ?)
   `),
 
   getSession: db.prepare(`
@@ -130,6 +140,12 @@ const stmts = {
   updateSessionTips: db.prepare(`
     UPDATE sessions
     SET venmo_handle = ?, cashapp_handle = ?, zelle_handle = ?
+    WHERE id = ?
+  `),
+
+  updateSessionStatus: db.prepare(`
+    UPDATE sessions
+    SET status = ?
     WHERE id = ?
   `),
 
@@ -221,8 +237,14 @@ export function createSession(sessionId, songDuration = 270, tipHandles = {}) {
     songDuration,
     venmo_handle,
     cashapp_handle,
-    zelle_handle
+    zelle_handle,
+    'active' // Default initial status
   );
+  return { changes: result.changes };
+}
+
+export function updateSessionStatus(sessionId, status) {
+  const result = stmts.updateSessionStatus.run(status, sessionId);
   return { changes: result.changes };
 }
 
