@@ -194,6 +194,35 @@ function DJDashboard() {
         }
     };
 
+    // Move song up/down
+    const moveSong = async (songId, direction) => {
+        const songIndex = songs.findIndex(s => s.id === songId);
+        if (songIndex === -1) return;
+
+        const newIndex = direction === 'up' ? songIndex - 1 : songIndex + 1;
+        if (newIndex < 0 || newIndex >= songs.length) return;
+
+        const reorderedSongs = [...songs];
+        const [movedSong] = reorderedSongs.splice(songIndex, 1);
+        reorderedSongs.splice(newIndex, 0, movedSong);
+
+        const newOrder = reorderedSongs.map((song, index) => ({
+            id: song.id,
+            position: index + 1
+        }));
+
+        try {
+            await fetch(`/api/sessions/${sessionId}/reorder`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ songPositions: newOrder })
+            });
+            await fetchData();
+        } catch (error) {
+            console.error('Error moving song:', error);
+        }
+    };
+
     // Delete song
     const deleteSong = async (songId) => {
         if (!confirm('Are you sure you want to remove this song?')) return;
@@ -503,6 +532,24 @@ function DJDashboard() {
                                             <div className="song-left">
                                                 <div className="drag-handle" title="Drag to reorder">
                                                     ⋮⋮
+                                                </div>
+                                                <div className="reorder-buttons">
+                                                    <button
+                                                        className="btn-reorder btn-reorder-up"
+                                                        onClick={() => moveSong(song.id, 'up')}
+                                                        disabled={song.position === 1}
+                                                        title="Move up"
+                                                    >
+                                                        ▲
+                                                    </button>
+                                                    <button
+                                                        className="btn-reorder btn-reorder-down"
+                                                        onClick={() => moveSong(song.id, 'down')}
+                                                        disabled={song.position === songs.length}
+                                                        title="Move down"
+                                                    >
+                                                        ▼
+                                                    </button>
                                                 </div>
                                                 <input
                                                     type="checkbox"

@@ -603,6 +603,42 @@ body::before {
     opacity: 1;
 }
 
+.reorder-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.btn-reorder {
+    background: linear-gradient(135deg, rgba(255, 182, 18, 0.8), rgba(255, 149, 0, 0.8));
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    color: #000;
+    cursor: pointer;
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 6px;
+    transition: all 0.2s;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.btn-reorder:hover:not(:disabled) {
+    background: linear-gradient(135deg, #FFB612, #ff9500);
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(255, 182, 18, 0.4);
+}
+
+.btn-reorder:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: rgba(100, 100, 100, 0.5);
+}
+
+.btn-reorder:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
 .song-checkbox {
     width: 18px;
     height: 18px;
@@ -643,6 +679,24 @@ body::before {
     .btn {
         font-size: 12px;
         padding: 6px 10px;
+    }
+
+    .song-left {
+        flex-wrap: wrap;
+    }
+
+    .drag-handle {
+        font-size: 1.2rem;
+    }
+
+    .reorder-buttons {
+        flex-direction: row;
+        gap: 4px;
+    }
+
+    .btn-reorder {
+        font-size: 14px;
+        padding: 4px 8px;
     }
 
     .search-filter-row {
