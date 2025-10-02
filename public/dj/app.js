@@ -99,9 +99,15 @@ function DJDashboard() {
 
         const sortable = Sortable.create(sortableRef.current, {
             animation: 150,
+            handle: '.drag-handle',
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
+            forceFallback: true,
+            fallbackTolerance: 3,
+            touchStartThreshold: 5,
+            delayOnTouchOnly: true,
+            delay: 100,
             onEnd: async (evt) => {
                 const newOrder = Array.from(sortableRef.current.children).map((child, index) => ({
                     id: parseInt(child.dataset.songId),
@@ -495,6 +501,9 @@ function DJDashboard() {
                                     >
                                         <div className="song-header">
                                             <div className="song-left">
+                                                <div className="drag-handle" title="Drag to reorder">
+                                                    ⋮⋮
+                                                </div>
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedSongs.has(song.id)}

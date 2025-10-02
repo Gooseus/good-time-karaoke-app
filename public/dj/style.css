@@ -148,7 +148,6 @@ body::before {
     border-left: 4px solid #FFB612;
     border: 1px solid rgba(165, 172, 175, 0.15);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    cursor: move;
     transition: all 0.3s ease;
     position: relative;
 }
@@ -191,13 +190,21 @@ body::before {
 }
 
 .song-item.sortable-chosen {
-    opacity: 0.8;
-    transform: rotate(5deg);
+    opacity: 0.85;
+    transform: scale(1.03);
+    box-shadow: 0 8px 25px rgba(255, 182, 18, 0.4);
 }
 
 .song-item.sortable-drag {
     opacity: 0.9;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transform: rotate(2deg) scale(1.05);
+}
+
+.song-item.sortable-ghost {
+    opacity: 0.3;
+    background: linear-gradient(90deg, rgba(255, 182, 18, 0.2) 0%, rgba(255, 149, 0, 0.2) 100%);
+    border: 2px dashed rgba(255, 182, 18, 0.5);
 }
 
 .song-item.next-song {
@@ -570,6 +577,30 @@ body::before {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.drag-handle {
+    font-size: 1.5rem;
+    color: #FFB612;
+    cursor: grab;
+    padding: 0 8px;
+    user-select: none;
+    line-height: 1;
+    opacity: 0.7;
+    transition: all 0.2s;
+    touch-action: none;
+}
+
+.drag-handle:hover,
+.drag-handle:active {
+    opacity: 1;
+    transform: scale(1.2);
+    cursor: grabbing;
+}
+
+.sortable-chosen .drag-handle {
+    cursor: grabbing;
+    opacity: 1;
 }
 
 .song-checkbox {
