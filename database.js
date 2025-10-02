@@ -5,7 +5,10 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DB_FILE = join(__dirname, 'data.json');
+// Use /data volume in production (Fly.io), fallback to local for development
+const DB_FILE = process.env.NODE_ENV === 'production'
+  ? '/data/data.json'
+  : join(__dirname, 'data.json');
 
 // Initialize data structure
 let data = {

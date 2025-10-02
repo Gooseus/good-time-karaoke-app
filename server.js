@@ -34,6 +34,11 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Use /data volume in production (Fly.io), fallback to local for development
+const QR_CODE_DIR = process.env.NODE_ENV === 'production'
+  ? '/data/qr-codes'
+  : join(__dirname, 'public', 'qr-codes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -41,6 +46,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// Serve QR codes from persistent volume in production
+if (process.env.NODE_ENV === 'production') {
+  app.use('/qr-codes', express.static('/data/qr-codes'));
+}
 
 // Helper function to generate QR code
 async function generateQRCode(sessionId, req) {
@@ -50,9 +60,12 @@ async function generateQRCode(sessionId, req) {
   const baseUrl = `${protocol}://${host}`;
 
   const url = `${baseUrl}/singer/${sessionId}`;
-  const qrCodePath = join(__dirname, 'public', 'qr-codes', `${sessionId}.png`);
+  const qrCodePath = join(QR_CODE_DIR, `${sessionId}.png`);
 
   try {
+    // Ensure directory exists
+    await fs.promises.mkdir(QR_CODE_DIR, { recursive: true });
+
     await QRCode.toFile(qrCodePath, url, {
       width: 300,
       margin: 2

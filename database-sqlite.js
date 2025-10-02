@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Use persistent volume path in production, local path in development
-const DB_DIR = process.env.FLY_APP_NAME ? '/data' : __dirname;
+const DB_DIR = process.env.NODE_ENV === 'production' ? '/data' : __dirname;
 const DB_PATH = join(DB_DIR, 'karaoke.db');
 
 // Ensure directory exists
