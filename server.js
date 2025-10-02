@@ -229,6 +229,9 @@ app.get('/singer/:sessionId', (req, res) => {
             letter-spacing: 2px;
             text-shadow: 0 0 10px rgba(255, 182, 18, 0.5), 0 0 20px rgba(255, 182, 18, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
+        form {
+            transition: opacity 0.5s ease;
+        }
         .form-group {
             margin-bottom: 20px;
         }
@@ -500,11 +503,22 @@ app.get('/singer/:sessionId', (req, res) => {
             <!-- State will be loaded here -->
         </div>
 
-        <form hx-post="/api/sessions/${sessionId}/songs"
+        <form id="song-form" hx-post="/api/sessions/${sessionId}/songs"
               hx-target="#result"
               hx-swap="innerHTML"
               hx-on::before-request="document.querySelector('button').disabled = true"
-              hx-on::after-request="document.querySelector('button').disabled = false">
+              hx-on::after-request="
+                const form = document.getElementById('song-form');
+                const response = event.detail.xhr;
+                if (response.status === 200) {
+                  form.style.opacity = '0.5';
+                  form.style.pointerEvents = 'none';
+                  const inputs = form.querySelectorAll('input, select, button');
+                  inputs.forEach(el => el.disabled = true);
+                } else {
+                  document.querySelector('button').disabled = false;
+                }
+              ">
 
             <div class="form-group">
                 <label for="singer_select">Singer</label>
