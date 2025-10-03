@@ -15,7 +15,8 @@ Simple full-stack web application designed for ease of use:
   - Singer forms: HTMX + server-side HTML (fast, works everywhere)
   - DJ dashboard: React with drag-and-drop (SortableJS)
 - **Backend**: Node.js Express server with polling-based updates (no WebSockets)
-- **Database**: JSON file storage (`data.json`) for simplicity
+- **Database**: SQLite (`database-sqlite.js`) with persistent volume storage in production
+- **State Management**: XState for session and song state transitions
 - **External Integrations**: YouTube search links, QR code generation (domain-aware)
 
 ## Implemented Features
@@ -25,20 +26,29 @@ Simple full-stack web application designed for ease of use:
 - **No Signup Required**: Tracks singers across requests without accounts
 - **Name Deduplication**: Automatic handling of duplicate names (John → John (2))
 - **Mobile Optimized**: Fast-loading forms that work on any device
+- **Form Disabling**: Form fades and disables after successful submission
+- **Session State Awareness**: Shows pause indicators and respects queue delays
+- **Song Management**: Edit/cancel songs after submission
 - **Real-time Queue View**: Auto-refreshing queue position display
 
 ### DJ Experience (React Dashboard)
-- **Drag & Drop Reordering**: SortableJS integration for queue management
-- **Song Status Tracking**: waiting → playing → done workflow
+- **Touch-Optimized Reordering**: Drag handle + up/down buttons for iPad/touch devices
+- **Drag & Drop**: SortableJS with touch support and visual feedback
+- **Song State Management**: XState-powered transitions (waiting → playing → done/skipped)
+- **Session Pause/Resume**: Control queue state with visual indicators
 - **YouTube Integration**: One-click search links for each song
 - **Singer Statistics**: Track how many songs each person has requested
-- **Session Management**: QR code generation and session controls
+- **Bulk Operations**: Multi-select songs for batch actions
+- **Undo System**: Revert last action within 5 minutes
+- **Tip Integration**: Venmo, CashApp, Zelle with QR code generation
 - **Real-time Updates**: 3-second polling for live queue updates
 
 ### Technical Implementation
-- **Database**: JSON file storage with functions in `database.js`
-- **API Endpoints**: RESTful routes for sessions, songs, singers
-- **QR Codes**: Domain-aware generation using request headers
+- **Database**: SQLite with better-sqlite3 (`database-sqlite.js`)
+- **Production Storage**: Persistent volume at `/data` on Fly.io
+- **State Machines**: XState for session (active/paused) and song transitions
+- **API Endpoints**: RESTful routes for sessions, songs, singers, state transitions
+- **QR Codes**: Domain-aware generation, stored in persistent volume
 - **No WebSockets**: Simple polling approach for reliability
 
 ## Development Status
@@ -54,12 +64,14 @@ Simple full-stack web application designed for ease of use:
 - Session persistence with JSON file storage
 
 ### 🔧 Key Files
-- `server.js` - Main Express server with all routes
-- `database.js` - JSON file storage functions
+- `server.js` - Main Express server with all routes and HTMX templates
+- `database-sqlite.js` - SQLite database operations (actively used)
+- `database.js` - Legacy JSON storage (kept for reference)
+- `src/services/state-manager.js` - XState machines for session/song states
 - `public/dj/app.js` - React dashboard with drag-and-drop
-- `public/dj/style.css` - DJ dashboard styling
-- `data.json` - Runtime database file (auto-generated)
-- `public/qr-codes/` - Generated QR code images
+- `public/dj/style.css` - DJ dashboard styling with touch optimizations
+- `fly.toml` - Fly.io deployment configuration
+- `FLY_FIX.md` - Production deployment notes and volume management
 
 ## How to Run
 
@@ -70,10 +82,12 @@ PORT=3001 npm start
 # Visit http://localhost:3001
 ```
 
-### Production
-- See `DEPLOYMENT.md` for platform-specific guides
-- Environment variables: `PORT`, `BASE_URL` (optional)
-- QR codes automatically use correct domain in production
+### Production (Fly.io)
+- See `FLY_FIX.md` for deployment and persistence details
+- Environment variables: `NODE_ENV=production`, `PORT` (auto-set by Fly)
+- Persistent volume: `/data` for SQLite database and QR codes
+- Deploy: `fly deploy`
+- Single machine configuration prevents data inconsistencies
 
 ## API Endpoints
 

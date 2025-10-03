@@ -2083,7 +2083,7 @@ app.post('/api/sessions/:id/transition', (req, res) => {
 });
 
 // Admin API endpoint
-app.get('/api/admin/sessions', (req, res) => {
+app.get('/api/admin/sessions', (_req, res) => {
   try {
     const sessions = getAllSessionsWithStats();
     res.json({ sessions });
@@ -2094,7 +2094,7 @@ app.get('/api/admin/sessions', (req, res) => {
 });
 
 // Admin dashboard
-app.get('/admin', (req, res) => {
+app.get('/admin', (_req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html>
@@ -2517,7 +2517,7 @@ app.get('/admin', (req, res) => {
 });
 
 // Home page
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html>
